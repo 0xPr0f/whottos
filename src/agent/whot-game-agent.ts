@@ -567,7 +567,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         currentPlayer: nextPlayer,
       })
       return true
-      //op will not lose their turn
+      //op will lose their turn
       // return true
     }
 

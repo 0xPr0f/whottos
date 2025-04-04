@@ -177,7 +177,7 @@ export default function PlayBot() {
 
   console.log(gameState)
   return (
-    <div className="min-h-fit h-screen overflow-y-auto bg-[#FFA7A6] flex flex-col">
+    <div className="overflow-y-auto bg-[#FFA7A6] flex flex-col">
       <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
         <div>
           <h2 className="text-lg font-bold">Whot Game</h2>
@@ -292,7 +292,7 @@ export default function PlayBot() {
                             card.type === 'whot' &&
                             card.whotChoosenShape && (
                               <div className="absolute inset-0 flex items-center justify-center">
-                                <div className={`text-5xl text-[#570000]`}>
+                                <div className="text-4xl text-[#570000] transform-none">
                                   {card.whotChoosenShape === 'circle' && '●'}
                                   {card.whotChoosenShape === 'triangle' && '▲'}
                                   {card.whotChoosenShape === 'cross' && '✚'}
@@ -389,15 +389,72 @@ export default function PlayBot() {
       )}
 
       {showShapeSelector && (
-        <div className="shape-selector">
-          <h3>Select a shape:</h3>
-          <div className="shapes">
-            <button onClick={() => selectShape('circle')}>Circle</button>
-            <button onClick={() => selectShape('triangle')}>Triangle</button>
-            <button onClick={() => selectShape('cross')}>Cross</button>
-            <button onClick={() => selectShape('square')}>Square</button>
-            <button onClick={() => selectShape('star')}>Star</button>
-          </div>
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/50"
+          onClick={() => setShowShapeSelector(false)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="bg-white rounded-lg p-4 w-[90%] md:w-[400px] md:relative fixed bottom-0 md:bottom-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowShapeSelector(false)}
+              className="absolute top-2 right-2 text-[#570000] hover:text-[#3D0000] cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <h3 className="text-xl font-bold text-[#570000] mb-2 text-center">
+              Select a shape:
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-2xl">
+              <button
+                onClick={() => selectShape('circle')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors  cursor-pointer"
+              >
+                ●
+              </button>
+              <button
+                onClick={() => selectShape('triangle')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors  cursor-pointer"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => selectShape('cross')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors  cursor-pointer"
+              >
+                ✚
+              </button>
+              <button
+                onClick={() => selectShape('square')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors  cursor-pointer"
+              >
+                ■
+              </button>
+              <button
+                onClick={() => selectShape('star')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors  cursor-pointer"
+              >
+                ★
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>
