@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "wrangler dev": "wrangler dev",
+    "wrangler deploy": "wrangler publish",
     "wrangler types": "wrangler types",
     "build": "next build",
     "start": "next start",
