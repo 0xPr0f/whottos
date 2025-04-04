@@ -1,0 +1,19 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "react/no-unescaped-entities": "off",
+    "react/no-children-prop": "off"
+  },
+  "ignorePatterns": [
+    "src/app/play/page1.tsx",
+    "src/app/play/puzzle/page.tsx",
+    "src/app/play/showcase/page.tsx",
+    "src/app/structure.tsx",
+    "src/app/whot-game/card.tsx",
+    "src/app/whot-game/game-board.tsx",
+    "src/components/whot-card/card-svg-generation/generate-cards.tsx",
+    "src/pages/api/socketio.ts"
+  ]
+}

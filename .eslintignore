@@ -1,0 +1,8 @@
+src/app/play/page1.tsx
+src/app/play/puzzle/page.tsx
+src/app/play/showcase/page.tsx
+src/app/structure.tsx
+src/app/whot-game/card.tsx
+src/app/whot-game/game-board.tsx
+src/components/whot-card/card-svg-generation/generate-cards.tsx
+src/pages/api/socketio.ts

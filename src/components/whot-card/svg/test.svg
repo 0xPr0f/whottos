@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="80mm" height="120mm" viewBox="0 0 80 120"
+    style="border:1px solid #ccc;" xml:space="preserve">
+
+    <style type="text/css">
+        /* Card background + (optional) slight rounded corners */
+        .cardBackground {
+            fill: #FFFFFF;
+            /* White card face */
+            stroke: #000000;
+            /* Thin black outline */
+            stroke-width: 0.5;
+            rx: 2;
+            /* Slight corner radius */
+            ry: 2;
+        }
+
+        /* Generic decorative text styling */
+        .whotText {
+            fill: #9E1E2D;
+            /* Deep red color */
+            font-family: 'Great Vibes', 'Lucida Calligraphy', cursive;
+        }
+
+        /* Corner “20” styling */
+        .cornerNumber {
+            font-size: 9px;
+            /* Adjust as needed */
+            font-weight: bold;
+        }
+
+        /* Small “w” styling */
+        .cornerLetter {
+            font-size: 6px;
+        }
+
+        /* Large center “Whot” styling */
+        .centerWord {
+            font-size: 14px;
+            /* Adjust for appearance */
+            font-weight: bold;
+        }
+    </style>
+
+    <!-- 1) The Card Outline -->
+    <rect class="cardBackground" x="0" y="0" width="80" height="120" />
+
+    <!-- 2) Upper-Left Corner Text -->
+    <!-- "20" -->
+    <text x="5" y="15" class="whotText cornerNumber">
+        20
+    </text>
+    <!-- Small "w" just below the "20" -->
+    <text x="9" y="25" class="whotText cornerLetter">
+        w
+    </text>
+
+    <!-- 3) Center “Whot” -->
+    <text x="40" y="60" text-anchor="middle" dominant-baseline="middle" class="whotText centerWord">
+        Whot
+    </text>
+
+    <!-- 4) Lower-Right Corner (upside-down) -->
+    <!-- We rotate 180° around a point near that corner. -->
+    <g transform="translate(73,105) rotate(180)">
+        <!-- "20" -->
+        <text x="0" y="0" class="whotText cornerNumber" style="transform: translate(0px, 0px);">
+            20
+        </text>
+        <!-- Small "w" below it (now above it visually, but after rotation) -->
+        <text x="4" y="10" class="whotText cornerLetter">
+            w
+        </text>
+    </g>
+
+</svg>
