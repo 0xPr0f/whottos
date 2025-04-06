@@ -158,7 +158,7 @@ export default function GamePage() {
   }, [])
   return (
     <div className="min-h-fit h-full bg-gradient-to-b from-[#FFA7A6] overflow-auto to-[#FF8585]">
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 ">
           {/* Game area - takes 2/3 of screen on desktop, full width on mobile */}
           <div className="lg:col-span-2 bg-white h-fit rounded-lg overflow-hidden hidden md:block lg:block">
