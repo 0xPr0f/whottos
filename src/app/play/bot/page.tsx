@@ -845,12 +845,14 @@ function WhotCard({
 
   if (faceDown) {
     return (
-      <div className={cn('h-32 w-20', className)}>{generateCardBack()}</div>
+      <div className={cn('h-32 w-20 transform-none', className)}>
+        {generateCardBack()}
+      </div>
     )
   }
 
   return (
-    <div className={cn('h-32 w-20', className)}>
+    <div className={cn('h-32 w-20 transform-none', className)}>
       {generateWhotCards({
         cardType: card.type as
           | 'circle'
