@@ -563,8 +563,6 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
           nextPlayer === 'bot'
             ? [...this.state.botHand, ...drawnCards]
             : this.state.botHand,
-
-        currentPlayer: nextPlayer,
       })
       return true
       //op will lose their turn
