@@ -322,7 +322,7 @@ export default function PlayBot() {
   }
 
   return (
-    <div className="overflow-hidden bg-[#FFA7A6] flex flex-col h-screen">
+    <div className="overflow-y-auto bg-[#FFA7A6] flex flex-col">
       <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
         <div className="flex items-center">
           <h2 className="text-lg font-bold">Whot Game</h2>
@@ -365,7 +365,7 @@ export default function PlayBot() {
       )}
 
       {gameState?.gameStatus === 'playing' && (
-        <div className="flex flex-col lg:flex-row flex-1 h-full min-h-fit relative">
+        <div className="flex flex-col lg:flex-row flex-1 h-full min-h-fit relative overflow-y-auto">
           <div className="flex-1 flex flex-col p-4 lg:w-2/3 ">
             <div className="mb-8 h-fit">
               <h3 className="text-[#570000] font-bold mb-2 flex items-center">
@@ -546,22 +546,22 @@ export default function PlayBot() {
 
             {/* Player's Cards */}
             <div className=" h-52">
-              <h3 className="text-[#570000] font-bold mb-2 flex items-center flex-wrap">
-                <span className="flex items-center">
-                  Your Cards
+              <h3 className="text-[#570000] font-bold mb-2 flex items-center whitespace-nowrap overflow-hidden">
+                <div className="flex items-center min-w-0 overflow-hidden text-ellipsis">
+                  <span className="flex-shrink-0">Your Cards</span>
                   {gameState.currentPlayer === 'player' && (
-                    <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
+                    <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full flex-shrink-0">
                       Current Turn
                     </span>
                   )}
-                </span>
-                <span className="ml-2 text-sm">
-                  ({gameState.playerHand.length} cards)
-                </span>
+                  <span className="ml-2 text-sm flex-shrink-0">
+                    ({gameState.playerHand.length} cards)
+                  </span>
+                </div>
 
                 <button
                   onClick={() => setHandExpanded(!handExpanded)}
-                  className="ml-auto text-xs bg-[#570000] text-white px-2 py-1 rounded-full hover:bg-[#3D0000]"
+                  className="ml-auto text-xs bg-[#570000] text-white px-2 py-1 rounded-full hover:bg-[#3D0000] flex-shrink-0"
                 >
                   {handExpanded ? 'Compact View' : 'Expand Hand'}
                 </button>
@@ -665,7 +665,7 @@ export default function PlayBot() {
               </div>
 
               {isSmallScreen && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <div className="absolute bottom-2 left-0 right-0 flex justify-center ">
                   <Button
                     onClick={() => setShowCardView(!showCardView)}
                     className="bg-[#570000] hover:bg-[#3D0000] text-white rounded-full"
@@ -682,12 +682,9 @@ export default function PlayBot() {
             </div>
           </div>
 
-          {/* Move History Sidebar - Only visible on desktop */}
-          {!isSmallScreen && (
-            <div className="w-full lg:w-1/3 border-t lg:border-l lg:border-t-0 border-red-500 overflow-y-auto">
-              <MovesHistorySidebar moves={moveHistory} />
-            </div>
-          )}
+          <div className="w-full lg:w-1/3">
+            <MovesHistorySidebar moves={moveHistory} />
+          </div>
         </div>
       )}
 
