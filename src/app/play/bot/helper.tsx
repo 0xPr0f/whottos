@@ -56,13 +56,13 @@ export function MovesHistorySidebar({
 
     const strategicInsights: string[] = []
 
-    moves.forEach((move) => {
-      switch (move.action) {
+    moves?.forEach((move) => {
+      switch (move?.action) {
         case 'draw':
           specialCardCount.draw++
           break
         case 'play':
-          if (move.card) {
+          if (move?.card) {
             if (move.card.value === 2) specialCardCount.pickTwo++
             if (move.card.value === 14) specialCardCount.generalMarket++
             if (move.card.value === 1) specialCardCount.holdOn++
@@ -107,7 +107,7 @@ export function MovesHistorySidebar({
       </div>
 
       {/* Strategic Insights */}
-      {gameAnalysis.strategicInsights.length > 0 && (
+      {gameAnalysis?.strategicInsights?.length > 0 && (
         <div className="bg-[#FFF3E0] p-3 flex items-center">
           <AlertTriangle className="h-5 w-5 mr-3 text-[#FF9800]" />
           <div>
@@ -122,21 +122,23 @@ export function MovesHistorySidebar({
 
       {/* Special Card Analytics */}
       <div className="p-4 bg-[#F5F5F5] grid grid-cols-2 gap-3">
-        {Object.entries(gameAnalysis.specialCardCount).map(([key, count]) => (
-          <div
-            key={key}
-            className="bg-white rounded-lg p-3 shadow-sm flex items-center"
-          >
-            <div className="w-8 h-8 bg-[#570000] rounded-full flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-sm">{count}</span>
+        {Object.entries(gameAnalysis?.specialCardCount || {}).map(
+          ([key, count]) => (
+            <div
+              key={key}
+              className="bg-white rounded-lg p-3 shadow-sm flex items-center"
+            >
+              <div className="w-8 h-8 bg-[#570000] rounded-full flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-sm">{count}</span>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-[#333333] capitalize">
+                  {key.replace(/([A-Z])/g, ' $1').trim()}
+                </h4>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-medium text-[#333333] capitalize">
-                {key.replace(/([A-Z])/g, ' $1').trim()}
-              </h4>
-            </div>
-          </div>
-        ))}
+          )
+        )}
       </div>
 
       {/* Moves List */}
@@ -153,7 +155,7 @@ export function MovesHistorySidebar({
           <tbody
             ref={(el) => {
               // Auto-scroll to bottom when moves increase
-              if (el && moves.length > 0) {
+              if (el && moves?.length > 0) {
                 const container = el.closest('.overflow-y-auto')
                 if (container) {
                   container.scrollTop = container.scrollHeight
@@ -161,7 +163,7 @@ export function MovesHistorySidebar({
               }
             }}
           >
-            {moves.length === 0 ? (
+            {!moves || moves.length === 0 ? (
               <tr>
                 <td colSpan={3} className="p-4 text-center text-gray-500">
                   No moves yet. Let the game begin!
@@ -210,6 +212,8 @@ const MoveRow = memo(
 )
 // Simplified move display component
 const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
+  if (!move) return null
+
   const playerName =
     move.player === 'player' ? (
       <span className="font-medium text-blue-600">Player</span>
@@ -277,7 +281,9 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
 })
 
 // Helper function to get the appropriate icon for a card
-function getCardIcon(card: ICard) {
+function getCardIcon(card: ICard | undefined) {
+  if (!card) return null
+
   const iconClass = 'text-2xl'
 
   switch (card.type) {
@@ -293,13 +299,17 @@ function getCardIcon(card: ICard) {
       return <div className={`${iconClass} text-[#570000]`}>★</div>
     case 'whot':
       return <div className={`${iconClass} font-bold text-[#570000]`}>W</div>
+    default:
+      return null
   }
 }
 
 // Helper function to get icon for a chosen shape
 function getShapeIcon(
-  shape: 'circle' | 'triangle' | 'cross' | 'square' | 'star'
+  shape: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | undefined
 ) {
+  if (!shape) return null
+
   const iconClass = 'text-2xl'
 
   switch (shape) {
@@ -313,6 +323,8 @@ function getShapeIcon(
       return <div className={`${iconClass} text-[#570000]`}>■</div>
     case 'star':
       return <div className={`${iconClass} text-[#570000]`}>★</div>
+    default:
+      return null
   }
 }
 
