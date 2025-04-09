@@ -28,7 +28,7 @@ interface MoveHistoryItem {
   player: 'player' | 'bot'
   card?: ICard // Make card optional
   timestamp: Date
-  action: 'play' | 'draw' | 'pass'
+  action: 'play' | 'draw'
 }
 
 interface MovesHistorySidebarProps {
@@ -43,8 +43,8 @@ export function MovesHistorySidebar({
   className = '',
   onNewGame,
   onRematch,
-}: MovesHistorySidebarProps) {
-  // Memoized analysis to prevent unnecessary recalculations
+  setWhotInsightShow,
+}: MovesHistorySidebarProps & { setWhotInsightShow?: () => void }) {
   const gameAnalysis = useMemo(() => {
     const specialCardCount = {
       pickTwo: 0,
@@ -147,13 +147,20 @@ export function MovesHistorySidebar({
               <th className="p-2 text-left font-medium text-gray-500 w-10">
                 #
               </th>
-              <th className="p-2 text-left font-medium text-gray-500">
-                Player
-              </th>
-              <th className="p-2 text-left font-medium text-gray-500">Bot</th>
+              <th className="p-2 text-left font-medium text-gray-500">Moves</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            ref={(el) => {
+              // Auto-scroll to bottom when moves increase
+              if (el && moves.length > 0) {
+                const container = el.closest('.overflow-y-auto')
+                if (container) {
+                  container.scrollTop = container.scrollHeight
+                }
+              }
+            }}
+          >
             {moves.length === 0 ? (
               <tr>
                 <td colSpan={3} className="p-4 text-center text-gray-500">
@@ -181,9 +188,9 @@ export function MovesHistorySidebar({
         <Button
           variant="outline"
           className="bg-white border-[#4CAF50] text-[#4CAF50] hover:bg-[#4CAF50] hover:text-white"
-          onClick={onRematch}
+          onClick={setWhotInsightShow}
         >
-          <RotateCw className="mr-2 h-4 w-4" /> Rematch
+          <RotateCw className="mr-2 h-4 w-4" /> Close
         </Button>
       </div>
     </div>
@@ -201,63 +208,90 @@ const MoveRow = memo(
     </tr>
   )
 )
-
-// Memoized move display
+// Simplified move display component
 const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
-  // Handle draw scenario with no card
+  const playerName =
+    move.player === 'player' ? (
+      <span className="font-medium text-blue-600">Player</span>
+    ) : (
+      <span className="font-medium text-red-600">Bot</span>
+    )
+
+  // Handle draw action
   if (move.action === 'draw') {
     return (
-      <div className="flex items-center text-yellow-600">
-        <Download className="h-4 w-4 mr-2" />
-        Drew from market
+      <div className="flex items-center">
+        {playerName}
+        <span className="mx-1">drew from market</span>
+        <Download className="h-4 w-4 ml-1 text-yellow-600" />
       </div>
     )
   }
 
-  if (move.action === 'pass') {
-    return (
-      <div className="flex items-center text-red-600">
-        <AlertTriangle className="h-4 w-4 mr-2" />
-        Passed turn
-      </div>
-    )
-  }
-
-  // Only render card if it exists
   if (!move.card) return null
 
+  // Special card descriptions
+  let specialDescription = ''
+  if (move.card.value === 2) {
+    specialDescription = ' (Pick 2)'
+  } else if (move.card.value === 14) {
+    specialDescription = ' (General Market)'
+  } else if (move.card.value === 1) {
+    specialDescription = ' (Hold On)'
+  }
+
+  // Whot card handling
+  if (move.card.type === 'whot') {
+    return (
+      <div className="flex items-center">
+        {playerName}
+        <span className="mx-1">played</span>
+        {getCardIcon(move.card)}
+        <span className="ml-1 font-medium">Whot</span>
+        {move.card.whotChoosenShape && (
+          <>
+            <span className="mx-1">|</span>
+            {getShapeIcon(move.card.whotChoosenShape)}
+            <span className="ml-1 capitalize">
+              {move.card.whotChoosenShape}
+            </span>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Normal card play
   return (
-    <div className="flex items-center">
+    <div className="flex items-center justify-start">
+      {playerName}
+      <span className="mx-2">played</span>
       {getCardIcon(move.card)}
-      <span className="ml-2">
-        {move.card.type === 'whot'
-          ? `Whot (${move.card.whotChoosenShape || 'Wild'})`
-          : `${move.card.type} ${move.card.value}`}
-      </span>
+      <span className="mx-2 font-medium capitalize">{move.card.type}</span>
+      <span className="mx-1">{move.card.value}</span>
+      {specialDescription && (
+        <span className="mx-1 text-gray-600">{specialDescription}</span>
+      )}
     </div>
   )
 })
 
 // Helper function to get the appropriate icon for a card
 function getCardIcon(card: ICard) {
-  const iconClass = 'h-5 w-5'
+  const iconClass = 'text-2xl'
 
   switch (card.type) {
     case 'circle':
-      return <Circle className={`${iconClass} text-[#FF6B6B]`} />
+      return <div className={`${iconClass} text-[#570000]`}>●</div>
     case 'triangle':
-      return <Triangle className={`${iconClass} text-[#4ECDC4]`} />
+      return <div className={`${iconClass} text-[#570000]`}>▲</div>
     case 'cross':
-      return <X className={`${iconClass} text-[#FFD166]`} />
+      return <div className={`${iconClass} text-[#570000]`}>✚</div>
     case 'square':
-      return <Square className={`${iconClass} text-[#6A0572]`} />
+      return <div className={`${iconClass} text-[#570000]`}>■</div>
     case 'star':
-      return <Star className={`${iconClass} text-[#F8961E]`} />
+      return <div className={`${iconClass} text-[#570000]`}>★</div>
     case 'whot':
-      if (card.whotChoosenShape) {
-        // If a shape was chosen for the Whot card, show that shape
-        return getShapeIcon(card.whotChoosenShape)
-      }
       return <div className={`${iconClass} font-bold text-[#570000]`}>W</div>
   }
 }
@@ -266,19 +300,19 @@ function getCardIcon(card: ICard) {
 function getShapeIcon(
   shape: 'circle' | 'triangle' | 'cross' | 'square' | 'star'
 ) {
-  const iconClass = 'h-5 w-5'
+  const iconClass = 'text-2xl'
 
   switch (shape) {
     case 'circle':
-      return <Circle className={`${iconClass} text-[#FF6B6B]`} />
+      return <div className={`${iconClass} text-[#570000]`}>●</div>
     case 'triangle':
-      return <Triangle className={`${iconClass} text-[#4ECDC4]`} />
+      return <div className={`${iconClass} text-[#570000]`}>▲</div>
     case 'cross':
-      return <X className={`${iconClass} text-[#FFD166]`} />
+      return <div className={`${iconClass} text-[#570000]`}>✚</div>
     case 'square':
-      return <Square className={`${iconClass} text-[#6A0572]`} />
+      return <div className={`${iconClass} text-[#570000]`}>■</div>
     case 'star':
-      return <Star className={`${iconClass} text-[#F8961E]`} />
+      return <div className={`${iconClass} text-[#570000]`}>★</div>
   }
 }
 

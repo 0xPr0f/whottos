@@ -9,6 +9,13 @@ interface Card {
   whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
 }
 
+interface MoveHistoryItem {
+  player: 'player' | 'bot'
+  card?: Card
+  timestamp: Date
+  action: 'play' | 'draw'
+}
+
 interface WhotGameState {
   gameId: string
   deck: Card[]
@@ -20,9 +27,10 @@ interface WhotGameState {
   winner?: 'player' | 'bot'
   lastAction?: {
     player: 'player' | 'bot'
-    action: 'play' | 'draw' | 'pass'
+    action: 'play' | 'draw'
     card?: Card
   }
+  moveHistory: MoveHistoryItem[]
 }
 
 type Env = {
@@ -42,6 +50,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     callCardPile: [],
     currentPlayer: 'player',
     gameStatus: 'waiting',
+    moveHistory: [],
   }
 
   anthropic: Anthropic | null = null
@@ -72,6 +81,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
 
     try {
       const data = JSON.parse(message)
+      console.log(data)
       let result
 
       switch (data.action) {
@@ -117,6 +127,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       gameStatus: this.state.gameStatus,
       winner: this.state.winner,
       lastAction: this.state.lastAction,
+      moveHistory: this.state.moveHistory,
     }
   }
 
@@ -138,6 +149,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       gameStatus: 'playing',
       winner: undefined,
       lastAction: undefined,
+      moveHistory: [],
     })
 
     return { success: true }
@@ -177,6 +189,14 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     if (playedCard.type === 'whot') {
       playedCard.whotChoosenShape = whotChoosenShape
     }
+
+    const moveHistoryItem: MoveHistoryItem = {
+      player: 'player',
+      action: 'play',
+      card: playedCard,
+      timestamp: new Date(),
+    }
+
     this.setState({
       ...this.state,
       playerHand,
@@ -186,6 +206,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         action: 'play',
         card: playedCard,
       },
+      moveHistory: [...this.state.moveHistory, moveHistoryItem],
     })
 
     if (playerHand.length === 0) {
@@ -225,6 +246,12 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       const deck = [...this.state.deck]
       const drawnCard = deck.pop()
 
+      const moveHistoryItem: MoveHistoryItem = {
+        player: 'player',
+        action: 'draw',
+        timestamp: new Date(),
+      }
+
       this.setState({
         ...this.state,
         deck,
@@ -234,6 +261,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
           player: 'player',
           action: 'draw',
         },
+        moveHistory: [...this.state.moveHistory, moveHistoryItem],
       })
     }
 
@@ -284,7 +312,6 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       const botHand = [...this.state.botHand]
       const playedCard = botHand.splice(bestMoveIndex, 1)[0]
 
-      // If whot card is played, choose a shape
       if (playedCard.type === 'whot') {
         const shapes = botHand.reduce((acc: Record<string, number>, card) => {
           if (card.type !== 'whot') {
@@ -301,6 +328,13 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         playedCard.whotChoosenShape = mostCommonShape
       }
 
+      const moveHistoryItem: MoveHistoryItem = {
+        player: 'bot',
+        action: 'play',
+        card: playedCard,
+        timestamp: new Date(),
+      }
+
       this.setState({
         ...this.state,
         botHand,
@@ -310,6 +344,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
           action: 'play',
           card: playedCard,
         },
+        moveHistory: [...this.state.moveHistory, moveHistoryItem],
       })
 
       if (botHand.length === 0) {
@@ -325,6 +360,12 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         const deck = [...this.state.deck]
         const drawnCard = deck.pop()
 
+        const moveHistoryItem: MoveHistoryItem = {
+          player: 'bot',
+          action: 'draw',
+          timestamp: new Date(),
+        }
+
         this.setState({
           ...this.state,
           deck,
@@ -334,6 +375,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
             player: 'bot',
             action: 'draw',
           },
+          moveHistory: [...this.state.moveHistory, moveHistoryItem],
         })
       }
     }
@@ -382,9 +424,9 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         deckSize: this.state.deck.length,
         validMoves: this.findBotValidMoves().map((i) => this.state.botHand[i]),
       }
-      const response = await this.cloudflareHostedBot(gameState) //await this.anthropicAIBotMove(gameState)
+      const response = await this.cloudflareHostedBot(gameState)
 
-      content = (response as any).response //((response as any).content[0] as any).text
+      content = (response as any).response
       let strategy
 
       if (content.startsWith('```json')) {
@@ -393,7 +435,6 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         content = content.replace(/```\n/, '').replace(/\n```$/, '')
       }
 
-      // Now parse the cleaned JSON
       const strat_parse = JSON.parse(content)
       strategy = strat_parse
 
@@ -414,6 +455,14 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         if (!this.isValidMove(playedCard)) {
           throw new Error('Card Played is not valid move')
         }
+
+        const moveHistoryItem: MoveHistoryItem = {
+          player: 'bot',
+          action: 'play',
+          card: playedCard,
+          timestamp: new Date(),
+        }
+
         this.setState({
           ...this.state,
           botHand,
@@ -423,6 +472,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
             action: 'play',
             card: playedCard,
           },
+          moveHistory: [...this.state.moveHistory, moveHistoryItem],
         })
 
         if (botHand.length === 0) {
@@ -438,6 +488,12 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
           const deck = [...this.state.deck]
           const drawnCard = deck.pop()
 
+          const moveHistoryItem: MoveHistoryItem = {
+            player: 'bot',
+            action: 'draw',
+            timestamp: new Date(),
+          }
+
           this.setState({
             ...this.state,
             deck,
@@ -447,6 +503,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
               player: 'bot',
               action: 'draw',
             },
+            moveHistory: [...this.state.moveHistory, moveHistoryItem],
           })
         }
       }
@@ -542,7 +599,6 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
   }
 
   private enforceCardProperties(card: Card) {
-    // Pick 2 - The next player must draw 2 cards and lose their turn
     if (card.value === 2) {
       const nextPlayer =
         this.state.currentPlayer === 'player' ? 'bot' : 'player'
@@ -565,48 +621,9 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
             : this.state.botHand,
       })
       return true
-      //op will lose their turn
-      // return true
-    }
-
-    // Hold on (value 1) - The next player loses their turn
-    else if (card.value === 1) {
-      return true //op will lose their turn
-    }
-
-    // Pick 3 (value 5) - The next player must draw 3 cards and lose their turn
-    /*  else if (card.value === 5) {
-      const nextPlayer =
-        this.state.currentPlayer === 'player' ? 'bot' : 'player'
-      const deck = [...this.state.deck]
-
-      // Handle case where deck has less than 3 cards
-      const drawnCards = []
-      if (deck.length > 0) drawnCards.push(deck.pop()!)
-      if (deck.length > 0) drawnCards.push(deck.pop()!)
-      if (deck.length > 0) drawnCards.push(deck.pop()!)
-
-      // Add drawn cards to the next player's hand
-      this.setState({
-        ...this.state,
-        deck,
-        playerHand:
-          nextPlayer === 'player'
-            ? [...this.state.playerHand, ...drawnCards]
-            : this.state.playerHand,
-        botHand:
-          nextPlayer === 'bot'
-            ? [...this.state.botHand, ...drawnCards]
-            : this.state.botHand,
-        // The player who played the card goes again
-        currentPlayer: this.state.currentPlayer,
-      })
-
-      return true // Turn handled
-    }*/
-
-    // General Market (value 14) - Everyone except the player draws a card
-    else if (card.value === 14) {
+    } else if (card.value === 1) {
+      return true
+    } else if (card.value === 14) {
       const deck = [...this.state.deck]
 
       if (deck.length > 0) {
@@ -623,12 +640,11 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
             this.state.currentPlayer === 'player'
               ? [...this.state.botHand, drawnCard]
               : this.state.botHand,
-          // The player who played the card goes again
           currentPlayer: this.state.currentPlayer,
         })
       }
 
-      return true // op lose their turn
+      return true
     }
     this.setState({
       ...this.state,
@@ -644,16 +660,13 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       }
       topCard = this.state.callCardPile[this.state.callCardPile.length - 1]
     }
-    // This means if it is the first card in the callCardPile and it is whot, all moves is valid
     if (topCard.type === 'whot' && this.state.callCardPile.length === 1) {
       return true
     }
 
-    // This means you cannot play whot on a whot
     if (card.value === 20 && topCard.value !== 20) {
       return true
     }
-    // This enforces the you cant play whot on whot rule as "whot" shape doesnt exist on whotChoosenShape
     if (topCard.value === 20) {
       return topCard.whotChoosenShape === card.type
     }
@@ -664,18 +677,32 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
   private createDeck() {
     const deck: Card[] = []
 
-    for (const type of [
-      'circle',
-      'triangle',
-      'cross',
-      'square',
-      'star',
-    ] as const) {
-      for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
-        deck.push({ type, value, whotChoosenShape: null })
-      }
+    // Circles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
+    for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
+      deck.push({ type: 'circle', value, whotChoosenShape: null })
     }
 
+    // Triangles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
+    for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
+      deck.push({ type: 'triangle', value, whotChoosenShape: null })
+    }
+
+    // Crosses: 1, 2, 3, 5, 7, 10, 11, 13, 14
+    for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
+      deck.push({ type: 'cross', value, whotChoosenShape: null })
+    }
+
+    // Squares: 1, 2, 3, 5, 7, 10, 11, 13, 14
+    for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
+      deck.push({ type: 'square', value, whotChoosenShape: null })
+    }
+
+    // Stars: 1, 2, 3, 4, 5, 7, 8
+    for (const value of [1, 2, 3, 4, 5, 7, 8]) {
+      deck.push({ type: 'star', value, whotChoosenShape: null })
+    }
+
+    // 5 "Whot" cards numbered 20
     for (let i = 0; i < 5; i++) {
       deck.push({ type: 'whot', value: 20, whotChoosenShape: null })
     }
@@ -683,61 +710,43 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     return deck
   }
 
-  /* private shuffleDeck(deck: Card[]) {
-    const shuffled = [...deck]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled
-  }*/
-
-  //Chat GPT overkill shuffling (using pure JS)
   private shuffleDeck(deck: Card[]) {
-    // Make a copy of the original deck
     let shuffled = [...deck]
 
-    // First shuffling technique: Fisher-Yates (modern) shuffle
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
 
-    // Second shuffling technique: Riffle shuffle simulation
     const performRiffleShuffle = (cards: Card[]) => {
       const half = Math.floor(cards.length / 2)
       const firstHalf = cards.slice(0, half)
       const secondHalf = cards.slice(half)
       const result: Card[] = []
 
-      // Interleave the halves with slight imperfection
       while (firstHalf.length > 0 && secondHalf.length > 0) {
-        // Add slight randomness to simulate human shuffling
         if (Math.random() < 0.5) {
           result.push(firstHalf.shift()!)
           if (firstHalf.length > 0 && Math.random() < 0.2) {
-            result.push(firstHalf.shift()!) // Sometimes two cards stick together
+            result.push(firstHalf.shift()!)
           }
         } else {
           result.push(secondHalf.shift()!)
           if (secondHalf.length > 0 && Math.random() < 0.2) {
-            result.push(secondHalf.shift()!) // Sometimes two cards stick together
+            result.push(secondHalf.shift()!)
           }
         }
       }
 
-      // Add remaining cards
       return result.concat(firstHalf, secondHalf)
     }
 
-    // Perform multiple riffle shuffles
     for (let i = 0; i < 3; i++) {
       shuffled = performRiffleShuffle(shuffled)
     }
 
-    // Third shuffling technique: Cut the deck randomly 1-3 times
     const cutDeck = (cards: Card[]) => {
-      const cutPoint = Math.floor(Math.random() * (cards.length - 5)) + 3 // Avoid cutting too close to edges
+      const cutPoint = Math.floor(Math.random() * (cards.length - 5)) + 3
       return [...cards.slice(cutPoint), ...cards.slice(0, cutPoint)]
     }
 
@@ -746,17 +755,14 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       shuffled = cutDeck(shuffled)
     }
 
-    // Final Fisher-Yates shuffle for good measure
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
 
-    // Apply entropy from timestamp
     const timestamp = Date.now()
-    const entropyFactor = timestamp % 10 // Get last digit as entropy
+    const entropyFactor = timestamp % 10
 
-    // Use entropy to perform additional swaps
     for (let i = 0; i < entropyFactor; i++) {
       const idx1 = Math.floor(Math.random() * shuffled.length)
       const idx2 = Math.floor(Math.random() * shuffled.length)

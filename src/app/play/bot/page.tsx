@@ -1,14 +1,29 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAgent } from 'agents/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, XIcon, LayoutGrid, ChevronUp } from 'lucide-react'
+import {
+  RefreshCw,
+  AlertCircle,
+  Award,
+  Link,
+  Zap,
+  XIcon,
+  LayoutGrid,
+  ChevronUp,
+  Menu,
+  Eye,
+  EyeOff,
+  Trophy,
+} from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
   generateCardBack,
   generateWhotCards,
 } from '@/components/whot-card/card-svg-generation/generate-cards'
+import WithSidebar from '../helper/sidebar'
 import { MovesHistorySidebar } from './helper'
 
 interface Card {
@@ -21,7 +36,7 @@ interface MoveHistoryItem {
   player: 'player' | 'bot'
   card: Card
   timestamp: Date
-  action: 'play' | 'draw' | 'pass'
+  action: 'play' | 'draw'
 }
 
 interface GameState {
@@ -39,6 +54,7 @@ interface GameState {
     action: 'play' | 'draw'
     card?: Card
   }
+  moveHistory: MoveHistoryItem[]
 }
 
 export default function PlayBot() {
@@ -49,14 +65,13 @@ export default function PlayBot() {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(
     null
   )
-  const [moveHistory, setMoveHistory] = useState<MoveHistoryItem[]>([])
   const [handExpanded, setHandExpanded] = useState(false)
-  const [showCardView, setShowCardView] = useState(false)
   const playerHandRef = useRef<HTMLDivElement>(null)
   const [handWidth, setHandWidth] = useState(0)
   const [isSmallScreen, setIsSmallScreen] = useState(false)
+  const [showCardView, setShowCardView] = useState(false)
+  const [whotInsightShow, setWhotInsightShow] = useState(true)
 
-  // Generate a unique game ID
   const gameId = (() => {
     const storageKey = 'whot-game-storage'
     const storedData = localStorage.getItem(storageKey)
@@ -69,24 +84,14 @@ export default function PlayBot() {
     const newGameId = `game-${Math.random().toString(36).substring(2, 9)}`
     localStorage.setItem(
       storageKey,
-      JSON.stringify({ ...gameData, gameId: newGameId })
+      JSON.stringify({
+        ...gameData,
+        gameId: newGameId,
+      })
     )
     return newGameId
   })()
 
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.textContent = `
-      .scrollbar-hide::-webkit-scrollbar { display: none; }
-      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    `
-    document.head.appendChild(style)
-    return () => {
-      document.head.removeChild(style)
-    }
-  }, [])
-
-  // Update hand width and screen size on resize
   useEffect(() => {
     if (!playerHandRef.current) return
 
@@ -104,19 +109,24 @@ export default function PlayBot() {
 
     return () => {
       window.removeEventListener('resize', updateSizes)
-      if (playerHandRef.current) resizeObserver.unobserve(playerHandRef.current)
+      if (playerHandRef.current) {
+        resizeObserver.unobserve(playerHandRef.current)
+      }
     }
   }, [gameState])
 
-  // WebSocket agent for game communication
   const agent = useAgent({
     agent: 'whot-game-agent',
     name: gameId,
     host: process.env.NEXT_PUBLIC_WHOT_AGENT_HOST || 'http://localhost:8787',
-    onOpen: () => setIsConnected(true),
+    onOpen: () => {
+      console.log('Connected to Whot game')
+      setIsConnected(true)
+    },
     onMessage: (event) => {
       try {
         const data = JSON.parse(event.data)
+        console.log(data)
         if (data.type === 'gameState') {
           setGameState(data.state)
           setIsBotThinking(data.state.currentPlayer === 'bot')
@@ -127,22 +137,35 @@ export default function PlayBot() {
         console.error('Error parsing message:', error)
       }
     },
-    onClose: () => setIsConnected(false),
+    onClose: () => {
+      setIsConnected(false)
+    },
   })
 
-  const startGame = () => agent.send(JSON.stringify({ action: 'start_game' }))
+  const startGame = () => {
+    agent.send(JSON.stringify({ action: 'start_game' }))
+  }
 
   const playCard = (cardIndex: number) => {
     if (gameState?.currentPlayer !== 'player' || isBotThinking) return
 
     const card = gameState?.playerHand[cardIndex]
+    console.log(card)
     if (card?.value === 20) {
       setShowShapeSelector(true)
       setSelectedCardIndex(cardIndex)
     } else {
-      agent.send(JSON.stringify({ action: 'play_card', cardIndex }))
+      agent.send(
+        JSON.stringify({
+          action: 'play_card',
+          cardIndex,
+        })
+      )
     }
-    if (showCardView) setShowCardView(false)
+
+    if (!isBotThinking && showCardView) {
+      setShowCardView(false)
+    }
   }
 
   const selectShape = (shape: string) => {
@@ -153,6 +176,7 @@ export default function PlayBot() {
         whotChoosenShape: shape,
       })
     )
+
     setShowShapeSelector(false)
     setSelectedCardIndex(null)
   }
@@ -164,38 +188,52 @@ export default function PlayBot() {
   }
 
   useEffect(() => {
-    if (!gameState?.lastAction) return
-    const { player, action, card } = gameState.lastAction
-    setMoveHistory((prev) => [
-      ...prev,
-      {
-        player,
-        action,
-        card: card as Card,
-        timestamp: new Date(),
-      },
-    ])
+    if (gameState?.lastAction) {
+      console.log(gameState.lastAction)
+      if (gameState.lastAction.action === 'draw') {
+        addMoveToHistory(
+          gameState.lastAction.player,
+          gameState.lastAction.action
+        )
+      } else {
+        addMoveToHistory(
+          gameState.lastAction.player,
+          gameState.lastAction.action,
+          gameState.lastAction.card
+        )
+      }
+    }
   }, [gameState])
+
+  const addMoveToHistory = (
+    player: 'player' | 'bot',
+    action: 'play' | 'draw',
+    card?
+  ) => {
+    const newMove: MoveHistoryItem = {
+      player,
+      card,
+      timestamp: new Date(),
+      action,
+    }
+  }
 
   const getPlayerCardStyle = (index: number, totalCards: number) => {
     const cardWidth = 70
     const overlapFactor = Math.min(1, 10 / totalCards)
     const mobileAdjust = handWidth < 400 ? 0.5 : handWidth < 600 ? 0.7 : 1
-
-    // Card visibility width
-    const cardVisibleWidth = isSmallScreen
+    let cardVisibleWidth = isSmallScreen
       ? cardWidth * 0.6
       : handExpanded
-      ? cardWidth * 0.5
-      : cardWidth * 0.3
+      ? cardWidth * (0.5 + overlapFactor * 0.3)
+      : cardWidth * (0.25 + overlapFactor * 0.15)
 
     const maxFanWidth = Math.min(
       handWidth - cardWidth,
       totalCards * cardVisibleWidth * mobileAdjust
     )
 
-    // Rotation for desktop fan effect
-    const baseMaxAngle = isSmallScreen ? 0 : 20
+    const baseMaxAngle = isSmallScreen ? 0 : 25
     const cardCountFactor = Math.min(1, 7 / totalCards)
     const maxAngle =
       handWidth < 500 ? baseMaxAngle + 5 : baseMaxAngle * cardCountFactor
@@ -204,27 +242,28 @@ export default function PlayBot() {
     const position = index - center
     const normalizedPosition = position / center
     const rotation = normalizedPosition * maxAngle
-
-    // X position for card arrangement
     const fanFactor = maxFanWidth / Math.max(totalCards - 1, 1)
+
     let arcX
     if (isSmallScreen) {
       const cardSpacing = cardVisibleWidth * 1.2
       arcX =
         index * cardSpacing - (totalCards * cardSpacing) / 2 + handWidth / 2
     } else {
-      arcX = handExpanded
-        ? index * fanFactor * 0.8 - (fanFactor * (totalCards - 1) * 0.8) / 2
-        : index * fanFactor * 0.5 - (fanFactor * (totalCards - 1) * 0.5) / 2
+      arcX = index * fanFactor - (fanFactor * (totalCards - 1)) / 2
     }
 
-    // Y position for slight arc effect
-    const arcHeight = isSmallScreen ? 10 : Math.min(20, 25 * cardCountFactor)
+    const arcHeight = isSmallScreen ? 10 : Math.min(25, 30 * cardCountFactor)
     const arcY = Math.abs(normalizedPosition) * arcHeight
-
     const zIndex = 50 + (position < 0 ? totalCards + index : totalCards - index)
 
-    return { rotation, x: arcX, y: arcY, zIndex, scale: 1 }
+    return {
+      rotation,
+      x: arcX,
+      y: arcY,
+      zIndex,
+      scale: 1,
+    }
   }
 
   const getCurrentCallCard = () => {
@@ -238,23 +277,33 @@ export default function PlayBot() {
     return gameState.callCardPile[gameState.callCardPile.length - 1]
   }
 
+  const closeInsightCallback = useCallback(() => {
+    setWhotInsightShow(false)
+  }, [whotInsightShow])
+
+  useEffect(() => {
+    console.log(gameState?.moveHistory)
+  }, [gameState?.moveHistory])
   return (
-    <div className="bg-[#FFA7A6] flex flex-col min-h-screen">
-      {/* Header */}
+    <div className=" bg-[#FFA7A6] flex flex-col overflow-y-auto min-h-fit">
       <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
-        <h2 className="text-lg font-bold">Whot Game</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-white text-[#3D0000] bg-white hover:bg-[#570000] hover:text-white"
-          onClick={startGame}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          New Game
-        </Button>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-bold">VS</h2> <span> Advance AI</span>
+        </div>
+
+        <div className="flex items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white hover:text-white text-[#3D0000] bg-white hover:bg-[#570000]"
+            onClick={startGame}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            New Game
+          </Button>
+        </div>
       </div>
 
-      {/* Connection and Loading States */}
       {!isConnected && (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-[#570000] text-lg">Connecting to game server...</p>
@@ -278,12 +327,10 @@ export default function PlayBot() {
         </div>
       )}
 
-      {/* Main Game Interface */}
       {gameState?.gameStatus === 'playing' && (
-        <div className="flex flex-col lg:flex-row flex-1 min-h-fit">
-          <div className="flex-1 flex flex-col p-4 lg:w-2/3">
-            {/* Bot's Cards */}
-            <div className="mb-8">
+        <div className="flex flex-col lg:flex-row flex-1 relative gap-16 ">
+          <div className="flex-1 flex flex-col p-4 lg:w-2/3 ">
+            <div className="mb-8 h-fit">
               <h3 className="text-[#570000] font-bold mb-2 flex items-center">
                 Bot's Cards
                 {gameState.currentPlayer === 'bot' && (
@@ -300,6 +347,7 @@ export default function PlayBot() {
                       const totalCards = gameState.botHandCount!
                       const center = totalCards / 2
                       const normalizedPos = (j - center) / center
+
                       const maxRotation = Math.min(
                         25,
                         35 * (10 / Math.max(totalCards, 10))
@@ -309,14 +357,17 @@ export default function PlayBot() {
                       const cardWidth = 70
                       const screenWidth = window.innerWidth
                       const isMobile = screenWidth < 768
+
                       const widthFactor = isMobile
                         ? Math.min(0.8, 7 / Math.max(totalCards, 7))
                         : Math.min(1, 12 / Math.max(totalCards, 12))
+
                       const maxWidth = isMobile ? screenWidth * 0.8 : 400
                       const arcWidth = Math.min(
                         maxWidth,
                         totalCards * 20 * widthFactor
                       )
+
                       const spacingFactor = Math.min(
                         1,
                         10 / Math.max(totalCards, 10)
@@ -325,6 +376,7 @@ export default function PlayBot() {
                         j * (arcWidth / totalCards) * spacingFactor -
                         (arcWidth / 2) * spacingFactor +
                         cardWidth / 2
+
                       const yOffset =
                         Math.abs(normalizedPos) * 10 * spacingFactor
 
@@ -343,7 +395,7 @@ export default function PlayBot() {
                             type: 'spring',
                             stiffness: 300,
                             damping: 20,
-                            delay: j * 0.02,
+                            delay: j * 0.02, // Slightly faster animation
                           }}
                           style={{
                             transformOrigin: 'bottom center',
@@ -352,7 +404,7 @@ export default function PlayBot() {
                         >
                           <WhotCard
                             card={{ type: 'whot', value: 20 }}
-                            faceDown
+                            faceDown={true}
                           />
                         </motion.div>
                       )
@@ -360,14 +412,13 @@ export default function PlayBot() {
                 </div>
               </div>
               <div
-                className="text-[#570000] text-sm font-bold text-center transition-opacity duration-300"
+                className="text-[#570000] text-sm font-bold text-center h-fit transition-opacity duration-300"
                 style={{ opacity: isBotThinking ? 1 : 0 }}
               >
                 Bot is thinking...
               </div>
             </div>
 
-            {/* Call Card and Market */}
             <div className="flex justify-center gap-8 mb-4 h-44">
               <div className="text-center">
                 <h4 className="text-[#570000] text-sm font-bold mb-1">
@@ -375,39 +426,48 @@ export default function PlayBot() {
                 </h4>
                 <div className="relative h-32 w-20">
                   {gameState.callCardPile
-                    .slice(-5)
+                    .slice(-3) // Limit to top 3 cards
                     .map((card: Card, index, array) => {
-                      const randomOffset = () => (Math.random() - 0.5) * 3
                       const isTopCard = index === array.length - 1
 
                       return (
                         <motion.div
                           key={index}
                           className="absolute top-0 left-0"
-                          initial={{ scale: 0 }}
+                          initial={{
+                            scale: 0.8,
+                            rotate: (index - array.length + 1) * 5,
+                            x: (index - array.length + 1) * 3,
+                            y: (index - array.length + 1) * -2,
+                          }}
                           animate={{
                             scale: 1,
                             rotate: isTopCard
                               ? 0
-                              : (index - array.length + 1) * 8 + randomOffset(),
-                            x: isTopCard
-                              ? 0
-                              : (index - array.length + 1) * 6 + randomOffset(),
-                            y: isTopCard
-                              ? 0
-                              : (index - array.length + 1) * -4 +
-                                randomOffset(),
+                              : (index - array.length + 1) * 50,
+                            x: isTopCard ? 0 : (index - array.length + 1) * 3,
+                            y: isTopCard ? 0 : (index - array.length + 1) * -2,
                           }}
-                          transition={{ duration: 0.2, velocity: 0.9 }}
-                          style={{ zIndex: index }}
+                          transition={{
+                            duration: 0.3,
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 20,
+                          }}
+                          style={{
+                            zIndex: index,
+                          }}
                         >
                           <div className="relative">
-                            <WhotCard card={card} faceDown={!isTopCard} />
+                            <WhotCard
+                              card={card}
+                              className={cn('transition-all duration-300')}
+                            />
                             {isTopCard &&
                               card.type === 'whot' &&
                               card.whotChoosenShape && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="text-4xl text-[#570000]">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="text-5xl text-[#570000] font-bold ">
                                     {card.whotChoosenShape === 'circle' && '●'}
                                     {card.whotChoosenShape === 'triangle' &&
                                       '▲'}
@@ -438,7 +498,10 @@ export default function PlayBot() {
                       'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <WhotCard card={{ type: 'whot', value: 20 }} faceDown />
+                  <WhotCard
+                    card={{ type: 'whot', value: 20 }}
+                    faceDown={true}
+                  />
                 </motion.div>
                 <div className="text-[#570000] text-sm font-bold mt-1">
                   {gameState?.deckCount} cards left
@@ -447,29 +510,32 @@ export default function PlayBot() {
             </div>
 
             {/* Player's Cards */}
-            <div className="h-52 relative">
-              <h3 className="text-[#570000] font-bold mb-2 flex items-center whitespace-nowrap">
-                <div className="flex items-center min-w-0 overflow-hidden">
-                  <span className="flex-shrink-0">Your Cards</span>
+            <div className=" h-52">
+              <h3 className="text-[#570000] font-bold mb-2 flex items-center flex-wrap">
+                <span className="flex items-center">
+                  Your Cards
                   {gameState.currentPlayer === 'player' && (
-                    <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
                       Current Turn
                     </span>
                   )}
-                  <span className="ml-2 text-sm flex-shrink-0">
-                    ({gameState.playerHand.length} cards)
-                  </span>
-                </div>
-                <button
-                  onClick={() => setHandExpanded(!handExpanded)}
-                  className="ml-auto text-xs bg-[#570000] text-white px-2 py-1 rounded-full hover:bg-[#3D0000] flex-shrink-0"
-                >
-                  {handExpanded ? 'Compact View' : 'Expand Hand'}
-                </button>
+                </span>
+                <span className="ml-2 text-sm">
+                  ({gameState.playerHand.length} cards)
+                </span>
+
+                {!isSmallScreen && (
+                  <button
+                    onClick={() => setHandExpanded(!handExpanded)}
+                    className="ml-auto text-xs bg-[#570000] text-white px-2 py-1 rounded-full hover:bg-[#3D0000]"
+                  >
+                    {handExpanded ? 'Compact View' : 'Expand Hand'}
+                  </button>
+                )}
               </h3>
 
               <div
-                className="relative w-full mx-auto h-44 md:h-48 overflow-x-auto scrollbar-hide"
+                className="relative w-full mx-auto h-44 md:h-48 overflow-x-auto items-stretch"
                 ref={playerHandRef}
                 onTouchStart={() => setHandExpanded(true)}
                 onTouchEnd={() => setHandExpanded(false)}
@@ -480,31 +546,26 @@ export default function PlayBot() {
                   msOverflowStyle: 'none',
                   WebkitOverflowScrolling: 'touch',
                   transition: 'all 0.3s ease-in-out',
-                  overflow: 'visible',
                 }}
               >
                 <div
                   className={cn(
-                    'flex items-center transition-all duration-300 ease-in-out',
+                    'flex items-center transition-all duration-300 ease-in-out h-full',
                     isSmallScreen ? 'justify-start px-2' : 'justify-center'
                   )}
                   style={{
                     width: isSmallScreen
                       ? `${gameState.playerHand.length * 60}px`
-                      : handExpanded
-                      ? '80%'
-                      : '70%',
-                    minWidth: isSmallScreen ? 'fit-content' : '100%',
-                    paddingLeft: isSmallScreen ? '16px' : undefined,
-                    paddingRight: isSmallScreen ? '16px' : undefined,
+                      : '100%',
+                    minWidth: 'fit-content',
+                    paddingLeft: isSmallScreen ? '16px' : '0',
+                    paddingRight: isSmallScreen ? '16px' : '0',
                     transform: isSmallScreen
                       ? handExpanded
                         ? 'scale(1.05)'
                         : 'scale(1)'
-                      : handExpanded
-                      ? 'scale(1.03)'
-                      : 'scale(0.95)',
-                    transition: 'all 0.3s ease-in-out',
+                      : 'scale(1)',
+                    transition: 'all 1s ease-in-out',
                     position: 'relative',
                     zIndex: 1,
                   }}
@@ -515,10 +576,11 @@ export default function PlayBot() {
                         index,
                         gameState.playerHand.length
                       )
+
                       const isPlayable =
                         gameState.currentPlayer === 'player' && !isBotThinking
-                      const hoveredScale = isSmallScreen ? 1.1 : 1.15
-                      const hoveredY = isSmallScreen ? -5 : -12
+                      const hoveredScale = isSmallScreen ? 1.0 : 1.15
+                      const hoveredY = isSmallScreen ? -5 : -15
 
                       return (
                         <motion.div
@@ -527,11 +589,14 @@ export default function PlayBot() {
                             'relative',
                             isPlayable ? 'cursor-pointer' : 'cursor-default'
                           )}
-                          initial={{ scale: 0, rotate: 0, x: 0, y: 0 }}
+                          initial={{
+                            scale: 0,
+                            rotate: 0,
+                            x: 0,
+                            y: 0,
+                          }}
                           animate={{
-                            scale: handExpanded
-                              ? style.scale * 1.0
-                              : style.scale * 0.95,
+                            scale: style.scale,
                             rotate: style.rotation,
                             x: isSmallScreen ? 0 : style.x,
                             y: isSmallScreen ? 0 : style.y,
@@ -542,25 +607,16 @@ export default function PlayBot() {
                               ? {
                                   scale: hoveredScale,
                                   y: hoveredY,
-                                  zIndex: 999,
+                                  zIndex: 100,
                                 }
                               : {}
                           }
-                          transition={{
-                            type: 'spring',
-                            stiffness: 500,
-                            damping: 30,
-                            duration: 0.2,
-                            velocity: 0.9,
-                          }}
                           style={{
                             transformOrigin: 'bottom center',
-                            marginRight: isSmallScreen
-                              ? '4px'
-                              : handExpanded
-                              ? '4px'
-                              : '-20px',
-                            width: isSmallScreen ? '55px' : '70px',
+                            marginRight: isSmallScreen ? '4px' : '0',
+                            width: isSmallScreen ? '55px' : undefined,
+                            position: isSmallScreen ? 'relative' : 'absolute',
+                            left: isSmallScreen ? 'auto' : '50%',
                           }}
                           onClick={() => isPlayable && playCard(index)}
                         >
@@ -573,7 +629,7 @@ export default function PlayBot() {
               </div>
 
               {isSmallScreen && (
-                <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                <div className="absolute bottom-1 left-0 right-0 flex justify-center z-50">
                   <Button
                     onClick={() => setShowCardView(!showCardView)}
                     className="bg-[#570000] hover:bg-[#3D0000] text-white rounded-full"
@@ -590,30 +646,153 @@ export default function PlayBot() {
             </div>
           </div>
 
-          {/* Move History Sidebar */}
-          <div className="w-full lg:w-1/3 border-t lg:border-l lg:border-t-0 border-red-500 overflow-y-auto">
-            <MovesHistorySidebar moves={moveHistory} />
-          </div>
+          {!isSmallScreen && whotInsightShow && (
+            <div className="w-full min-h-full h-[calc(100vh-64px)] lg:w-1/3 border-red-500 overflow-y-auto">
+              <MovesHistorySidebar
+                moves={gameState.moveHistory}
+                setWhotInsightShow={closeInsightCallback}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Game Over Screen */}
       {gameState?.gameStatus === 'finished' && (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <h2 className="text-[#570000] text-2xl font-bold mb-4">Game Over!</h2>
-          <p className="text-[#570000] text-xl mb-6">
-            {gameState.winner === 'player' ? 'You Win!' : 'Bot Wins!'}
-          </p>
-          <Button
-            className="bg-[#570000] hover:bg-[#3D0000] text-white"
-            onClick={startGame}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 20,
+            }}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
           >
-            Play Again
-          </Button>
+            {/* Confetti header */}
+            <div className="bg-[#570000] p-6 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20">
+                {Array(20)
+                  .fill(0)
+                  .map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute"
+                      initial={{
+                        x: Math.random() * 100 - 50 + '%',
+                        y: -20,
+                        opacity: 1,
+                        scale: Math.random() * 0.5 + 0.5,
+                      }}
+                      animate={{
+                        y: '120%',
+                        opacity: 0,
+                        rotate: Math.random() * 360,
+                      }}
+                      transition={{
+                        duration: Math.random() * 2 + 1,
+                        repeat: Number.POSITIVE_INFINITY,
+                        repeatDelay: Math.random() * 2,
+                      }}
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        width: `${Math.random() * 10 + 5}px`,
+                        height: `${Math.random() * 10 + 5}px`,
+                        background: [
+                          '#FFD700',
+                          '#FFA7A6',
+                          '#FF9190',
+                          '#FFFFFF',
+                        ][Math.floor(Math.random() * 4)],
+                      }}
+                    />
+                  ))}
+              </div>
+              <div className="relative z-10 flex justify-center">
+                <motion.div
+                  initial={{ y: -50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, type: 'spring' }}
+                  className="text-white"
+                >
+                  <Trophy className="h-20 w-20 " />
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 text-center">
+              <motion.h2
+                className="text-[#570000] text-3xl font-bold mb-4"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                Game Over!
+              </motion.h2>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mb-6"
+              >
+                <p className="text-[#570000] text-xl font-medium mb-2">
+                  {gameState.winner === 'player'
+                    ? 'You Win!'
+                    : 'Opponent Wins!'}
+                </p>
+                <p className="text-gray-600">
+                  {gameState.winner === 'player'
+                    ? 'Congratulations on your victory!'
+                    : 'Better luck next time!'}
+                </p>
+              </motion.div>
+
+              <motion.div
+                className="grid grid-cols-2 gap-4 mb-8 text-sm"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="bg-[#FFA7A6]/20 p-3 rounded-lg">
+                  <p className="text-[#570000] font-medium">Cards Played</p>
+                  <p className="text-2xl font-bold text-[#570000]">
+                    {
+                      gameState.moveHistory.filter((m) => m.action === 'play')
+                        .length
+                    }
+                  </p>
+                </div>
+                <div className="bg-[#FFA7A6]/20 p-3 rounded-lg">
+                  <p className="text-[#570000] font-medium">Cards Drawn</p>
+                  <p className="text-2xl font-bold text-[#570000]">
+                    {
+                      gameState.moveHistory.filter((m) => m.action === 'draw')
+                        .length
+                    }
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Button
+                  className="hover:bg-[#570000] bg-[#3D0000] text-white w-full py-6 text-lg rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  onClick={startGame}
+                >
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Play Again
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       )}
 
-      {/* Mobile Card Grid View */}
       {showCardView && (
         <div className="fixed inset-0 z-50 bg-[#FFA7A6] bg-opacity-95 flex flex-col overflow-y-auto">
           <div className="sticky top-0 bg-[#570000] text-white p-4 flex justify-between items-center">
@@ -622,6 +801,7 @@ export default function PlayBot() {
               <XIcon className="h-5 w-5 cursor-pointer" />
             </button>
           </div>
+
           <div className="flex-1 p-4">
             <div className="mb-6 border-b border-[#570000] pb-4">
               <h4 className="text-[#570000] font-bold mb-2">
@@ -632,16 +812,6 @@ export default function PlayBot() {
                   <WhotCard card={getCurrentCallCard()!} />
                 </div>
                 <div>
-                  <p className="text-[#570000] font-medium">
-                    {getCurrentCallCard()?.type === 'whot'
-                      ? `Whot (${
-                          getCurrentCallCard()?.whotChoosenShape ||
-                          'No shape chosen'
-                        })`
-                      : `${getCurrentCallCard()?.type} ${
-                          getCurrentCallCard()?.value
-                        }`}
-                  </p>
                   <Button
                     onClick={drawCard}
                     disabled={
@@ -654,25 +824,49 @@ export default function PlayBot() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-              {gameState?.playerHand.map((card, index) => {
-                const isPlayable =
-                  gameState.currentPlayer === 'player' && !isBotThinking
-                return (
-                  <div
-                    key={`grid-card-${index}`}
-                    className={cn(
-                      'rounded-lg p-2 flex flex-col items-center justify-center',
-                      isPlayable
-                        ? 'cursor-pointer hover:bg-[#FF9190] active:bg-[#FF7A79]'
-                        : 'opacity-70'
-                    )}
-                    onClick={() => isPlayable && playCard(index)}
-                  >
-                    <WhotCard card={card} />
-                  </div>
-                )
-              })}
+
+            <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+              {(() => {
+                const sortedCards = [...gameState!.playerHand].sort((a, b) => {
+                  const shapeOrder = {
+                    circle: 1,
+                    triangle: 2,
+                    cross: 3,
+                    square: 4,
+                    star: 5,
+                    whot: 6,
+                  }
+                  const shapeComparison =
+                    shapeOrder[a.type] - shapeOrder[b.type]
+                  if (shapeComparison !== 0) return shapeComparison
+                  return a.value - b.value
+                })
+                return sortedCards.map((card, index) => {
+                  const isPlayable =
+                    gameState!.currentPlayer === 'player' && !isBotThinking
+
+                  const originalIndex = gameState!.playerHand.findIndex(
+                    (handCard) =>
+                      handCard.type === card.type &&
+                      handCard.value === card.value
+                  )
+
+                  return (
+                    <div
+                      key={`grid-card-${index}`}
+                      className={cn(
+                        'rounded-lg p-2 flex flex-col items-center justify-center',
+                        isPlayable
+                          ? 'cursor-pointer hover:bg-[#FF9190] active:bg-[#FF7A79]'
+                          : 'opacity-70'
+                      )}
+                      onClick={() => isPlayable && playCard(originalIndex)}
+                    >
+                      <WhotCard card={card} />
+                    </div>
+                  )
+                })
+              })()}
             </div>
           </div>
         </div>
@@ -701,21 +895,36 @@ export default function PlayBot() {
               Select a shape:
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-2xl">
-              {['circle', 'triangle', 'cross', 'square', 'star'].map(
-                (shape) => (
-                  <button
-                    key={shape}
-                    onClick={() => selectShape(shape)}
-                    className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
-                  >
-                    {shape === 'circle' && '●'}
-                    {shape === 'triangle' && '▲'}
-                    {shape === 'cross' && '✚'}
-                    {shape === 'square' && '■'}
-                    {shape === 'star' && '★'}
-                  </button>
-                )
-              )}
+              <button
+                onClick={() => selectShape('circle')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
+              >
+                ●
+              </button>
+              <button
+                onClick={() => selectShape('triangle')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => selectShape('cross')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
+              >
+                ✚
+              </button>
+              <button
+                onClick={() => selectShape('square')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
+              >
+                ■
+              </button>
+              <button
+                onClick={() => selectShape('star')}
+                className="bg-[#570000] text-white py-3 px-6 rounded-lg hover:bg-[#3D0000] transition-colors cursor-pointer"
+              >
+                ★
+              </button>
             </div>
           </motion.div>
         </div>
@@ -734,20 +943,25 @@ function WhotCard({
   className?: string
 }) {
   if (!card) return null
+
+  if (faceDown) {
+    return (
+      <div className={cn('h-32 w-20', className)}>{generateCardBack()}</div>
+    )
+  }
+
   return (
     <div className={cn('h-32 w-20', className)}>
-      {faceDown
-        ? generateCardBack()
-        : generateWhotCards({
-            cardType: card.type as
-              | 'circle'
-              | 'square'
-              | 'triangle'
-              | 'cross'
-              | 'star'
-              | 'whot',
-            cardNumber: card.value,
-          })}
+      {generateWhotCards({
+        cardType: card.type as
+          | 'circle'
+          | 'square'
+          | 'triangle'
+          | 'cross'
+          | 'star'
+          | 'whot',
+        cardNumber: card.value,
+      })}
     </div>
   )
 }

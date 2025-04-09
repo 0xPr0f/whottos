@@ -160,10 +160,8 @@ export default function GamePage() {
   return (
     <div className="min-h-fit h-full p-2 bg-gradient-to-b from-[#FFA7A6] overflow-auto to-[#FF8585]">
       <div className="grid grid-cols-1 h-full lg:grid-cols-3 gap-4">
-        {/* Game area - takes 2/3 of screen on desktop, full width on mobile */}
         <div className="lg:col-span-2 bg-white h-full w-full rounded-lg overflow-hidden hidden md:block lg:block">
           <div className="relative w-full h-full min-h-[600px]">
-            {/* Bot's cards (face down) */}
             <div className="absolute top-[5%] left-0 right-0 flex flex-col items-center">
               <div className="mb-[2vh]">
                 <span className="bg-white/80 px-4 py-2 rounded-md text-base lg:text-lg font-semibold">
