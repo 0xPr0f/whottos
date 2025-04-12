@@ -108,10 +108,11 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         })
       )
     } catch (e) {
+      console.log(e)
       connection.send(
         JSON.stringify({
           type: 'error',
-          message: 'Invalid message format',
+          message: e,
         })
       )
     }

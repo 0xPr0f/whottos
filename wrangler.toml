@@ -14,6 +14,10 @@ new_sqlite_classes = ["WhotGameAgent"]
 [ai]
 binding = "AI"
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [vars]
 #ANTHROPIC_API_KEY = ''
 # OPENAI_API_KEY = ""

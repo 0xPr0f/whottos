@@ -20,7 +20,7 @@ const CardNumberText = ({ cardNumber }: { cardNumber: number }) => (
     transform="matrix(1 0 0 1 13.2988 34.2585)"
     fill="#791026"
     fontFamily="MyriadPro-Regular"
-    fontSize="27px"
+    fontSize="24"
     style={{ fontWeight: 'bolder' }}
   >
     {cardNumber}
@@ -47,6 +47,7 @@ const generateBaseCard = ({
         xmlSpace="preserve"
         width="100%"
         height="100%"
+        preserveAspectRatio="xMidYMid meet"
       >
         <g id="ace">
           <g>
@@ -57,7 +58,7 @@ const generateBaseCard = ({
             transform="matrix(1 0 0 1 147.3851 236.655)"
             fill="#791026"
             fontFamily="MyriadPro-Regular"
-            fontSize="27px"
+            fontSize="24"
             style={{ fontWeight: 'bolder' }}
           >
             {cardNumber}
@@ -186,20 +187,19 @@ function generateWhotCard(cardNumber: number) {
             transform="matrix(1 0 0 1 147.3851 236.655)"
             fill="#791026"
             fontFamily="MyriadPro-Regular"
-            fontSize="27px"
-            style={{ fontWeight: 'bolder' }}
+            fontSize="24"
+            style={{ fontWeight: 'bold' }}
           >
             20
           </text>
         </g>
 
         {/* Upper left corner */}
-
         <text
           x="24"
           y="50"
           fill="#791026"
-          fontFamily="Arial, sans-serif"
+          fontFamily="MyriadPro-Regular"
           fontSize="14"
           style={{ fontStyle: 'italic', fontWeight: 'bold' }}
         >
@@ -210,8 +210,8 @@ function generateWhotCard(cardNumber: number) {
           x="93.15"
           y="135"
           fill="#791026"
-          fontFamily="Arial, sans-serif"
-          fontSize="32"
+          fontFamily="MyriadPro-Regular"
+          fontSize="28"
           textAnchor="middle"
           style={{ fontWeight: 'bold', fontStyle: 'italic' }}
         >
@@ -224,7 +224,7 @@ function generateWhotCard(cardNumber: number) {
             x="4"
             y="15"
             fill="#791026"
-            fontFamily="Arial, sans-serif"
+            fontFamily="MyriadPro-Regular"
             fontSize="14"
             style={{ fontStyle: 'italic', fontWeight: 'bold' }}
           >
@@ -257,6 +257,7 @@ function generateCardBack() {
         height="100%"
         viewBox={`0 0 ${cardWidth} ${cardHeight}`}
         style={{ background: 'none' }}
+        preserveAspectRatio="xMidYMid meet"
       >
         {/* Outer card outline with rounded corners */}
         <path
@@ -287,14 +288,14 @@ function generateCardBack() {
           ry="5"
         />
 
-        {/* Top “Whot” text (unrotated), placed above the center */}
+        {/* Top "Whot" text (unrotated), placed above the center */}
         <g transform={`translate(${centerX}, ${centerY - offset})`}>
           <text
             x="0"
             y="0"
             fill="#FFF"
-            fontFamily="serif"
-            fontSize="36"
+            fontFamily="MyriadPro-Regular"
+            fontSize="32"
             fontWeight="bold"
             textAnchor="middle"
             dominantBaseline="middle"
@@ -303,14 +304,14 @@ function generateCardBack() {
           </text>
         </g>
 
-        {/* Bottom “Whot” text (rotated 180°), placed below the center */}
+        {/* Bottom "Whot" text (rotated 180°), placed below the center */}
         <g transform={`translate(${centerX}, ${centerY + offset}) rotate(180)`}>
           <text
             x="0"
             y="0"
             fill="#FFF"
-            fontFamily="serif"
-            fontSize="36"
+            fontFamily="MyriadPro-Regular"
+            fontSize="32"
             fontWeight="bold"
             textAnchor="middle"
             dominantBaseline="middle"

@@ -317,18 +317,133 @@ export default function PlayBot() {
       )}
 
       {isConnected && gameState?.gameStatus === 'waiting' && (
-        <div className="flex-1 flex items-center justify-center">
-          <Button
-            className="bg-[#570000] hover:bg-[#3D0000] text-white"
-            onClick={startGame}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
           >
-            Start New Game
-          </Button>
+            <div className="bg-[#570000] p-6 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20">
+                {['●', '▲', '✚', '■', '★'].map((symbol, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute text-white text-4xl"
+                    initial={{
+                      x: Math.random() * 100 + '%',
+                      y: Math.random() * 100 + '%',
+                      opacity: 0.3,
+                      rotate: Math.random() * 45 - 22.5,
+                    }}
+                    animate={{
+                      x: `${Math.random() * 100}%`,
+                      y: `${Math.random() * 100}%`,
+                      opacity: [0.3, 0.7, 0.3],
+                      rotate: Math.random() * 360,
+                    }}
+                    transition={{
+                      duration: Math.random() * 10 + 10,
+                      repeat: Number.POSITIVE_INFINITY,
+                      repeatType: 'reverse',
+                    }}
+                  >
+                    {symbol}
+                  </motion.div>
+                ))}
+              </div>
+              <div className="relative z-10 text-center">
+                <motion.h1
+                  className="text-3xl font-bold text-white mb-2"
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  Card Game
+                </motion.h1>
+                <motion.p
+                  className="text-white/80 text-sm"
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Match cards by suit or value to win!
+                </motion.p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 text-center">
+              <motion.div
+                className="mb-8"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <h2 className="text-[#570000] text-xl font-bold mb-4">
+                  How to Play Whot!
+                </h2>
+                <ul className="text-left text-gray-700 space-y-2 text-sm">
+                  <li className="flex items-start">
+                    <span className="text-[#570000] mr-2">•</span>
+                    <span>
+                      Play cards matching the symbol or number of the top card
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-[#570000] mr-2">•</span>
+                    <span>Special cards have unique effects:</span>
+                    <ul className="ml-6 mt-1 space-y-1">
+                      <li className="flex items-start text-xs">
+                        <span className="text-[#570000] mr-2">-</span>
+                        <span>Whot (20): Change the required symbol</span>
+                      </li>
+                      <li className="flex items-start text-xs">
+                        <span className="text-[#570000] mr-2">-</span>
+                        <span>Circle 1: Skip next player</span>
+                      </li>
+                      <li className="flex items-start text-xs">
+                        <span className="text-[#570000] mr-2">-</span>
+                        <span>Circle 2: Next player picks 2 cards</span>
+                      </li>
+
+                      <li className="flex items-start text-xs">
+                        <span className="text-[#570000] mr-2">-</span>
+                        <span>Circle 14: All players pick a card</span>
+                      </li>
+                    </ul>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-[#570000] mr-2">•</span>
+                    <span>Draw a card if you can't play any</span>
+                  </li>
+
+                  <li className="flex items-start">
+                    <span className="text-[#570000] mr-2">•</span>
+                    <span>First player to use all their cards wins!</span>
+                  </li>
+                </ul>
+              </motion.div>
+
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.6, type: 'spring' }}
+              >
+                <Button
+                  className="bg-[#570000] hover:bg-[#3D0000] text-white w-full py-6 text-lg rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  onClick={startGame}
+                >
+                  Start New Game
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
         </div>
       )}
 
       {gameState?.gameStatus === 'playing' && (
-        <div className="flex flex-col lg:flex-row flex-1 relative gap-16 ">
+        <div className="flex flex-col lg:flex-row flex-1 relative">
           <div className="flex-1 flex flex-col p-4 lg:w-2/3 ">
             <div className="mb-8 h-fit">
               <h3 className="text-[#570000] font-bold mb-2 flex items-center">
@@ -358,19 +473,22 @@ export default function PlayBot() {
                       const screenWidth = window.innerWidth
                       const isMobile = screenWidth < 768
 
+                      // Reduce width factor on mobile to prevent overflow
                       const widthFactor = isMobile
-                        ? Math.min(0.8, 7 / Math.max(totalCards, 7))
+                        ? Math.min(0.6, 5 / Math.max(totalCards, 5))
                         : Math.min(1, 12 / Math.max(totalCards, 12))
 
-                      const maxWidth = isMobile ? screenWidth * 0.8 : 400
+                      // Reduce max width on mobile to prevent overflow
+                      const maxWidth = isMobile ? screenWidth * 0.7 : 400
                       const arcWidth = Math.min(
                         maxWidth,
                         totalCards * 20 * widthFactor
                       )
 
+                      // Increase spacing compression for more cards
                       const spacingFactor = Math.min(
-                        1,
-                        10 / Math.max(totalCards, 10)
+                        0.8,
+                        8 / Math.max(totalCards, 8)
                       )
                       const xPos =
                         j * (arcWidth / totalCards) * spacingFactor -
@@ -386,7 +504,7 @@ export default function PlayBot() {
                           className="absolute top-0 left-1/2"
                           initial={{ scale: 0, rotate: 0, x: 0, y: 0 }}
                           animate={{
-                            scale: 1,
+                            scale: isMobile ? 0.9 : 1, // Slightly smaller cards on mobile
                             rotate: rotation,
                             x: xPos,
                             y: yOffset,
@@ -619,6 +737,13 @@ export default function PlayBot() {
                             left: isSmallScreen ? 'auto' : '50%',
                           }}
                           onClick={() => isPlayable && playCard(index)}
+                          onTouchStart={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            if (isPlayable) {
+                              playCard(index)
+                            }
+                          }}
                         >
                           <WhotCard card={card} />
                         </motion.div>
@@ -795,7 +920,7 @@ export default function PlayBot() {
 
       {showCardView && (
         <div className="fixed inset-0 z-50 bg-[#FFA7A6] bg-opacity-95 flex flex-col overflow-y-auto">
-          <div className="sticky top-0 bg-[#570000] text-white p-4 flex justify-between items-center">
+          <div className="sticky top-0 z-50 bg-[#570000] text-white p-4 flex justify-between items-center">
             <h3 className="font-bold">Your Cards</h3>
             <button onClick={() => setShowCardView(false)}>
               <XIcon className="h-5 w-5 cursor-pointer" />
@@ -808,9 +933,29 @@ export default function PlayBot() {
                 Current Call Card:
               </h4>
               <div className="flex items-center">
-                <div className="mr-4">
+                <div className="mr-4 relative  -z-20">
                   <WhotCard card={getCurrentCallCard()!} />
+
+                  {/* Overlay for chosen shape when card is whot */}
+                  {getCurrentCallCard()?.type === 'whot' &&
+                    getCurrentCallCard()?.whotChoosenShape && (
+                      <div className="absolute inset-0 flex items-center z-0 justify-center pointer-events-none">
+                        <div className="text-5xl text-[#570000] font-bold">
+                          {getCurrentCallCard()?.whotChoosenShape ===
+                            'circle' && '●'}
+                          {getCurrentCallCard()?.whotChoosenShape ===
+                            'triangle' && '▲'}
+                          {getCurrentCallCard()?.whotChoosenShape === 'cross' &&
+                            '✚'}
+                          {getCurrentCallCard()?.whotChoosenShape ===
+                            'square' && '■'}
+                          {getCurrentCallCard()?.whotChoosenShape === 'star' &&
+                            '★'}
+                        </div>
+                      </div>
+                    )}
                 </div>
+
                 <div>
                   <Button
                     onClick={drawCard}
@@ -933,7 +1078,7 @@ export default function PlayBot() {
   )
 }
 
-function WhotCard({
+export function WhotCard({
   card,
   faceDown,
   className,
