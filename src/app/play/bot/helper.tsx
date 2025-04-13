@@ -25,7 +25,7 @@ interface ICard {
 }
 
 interface MoveHistoryItem {
-  player: 'player' | 'bot'
+  player: 'player' | 'bot' | 'market'
   card?: ICard // Make card optional
   timestamp: Date
   action: 'play' | 'draw'
@@ -95,7 +95,6 @@ export function MovesHistorySidebar({
         className
       )}
     >
-      {/* Header */}
       <div className="bg-[#570000] text-white p-4 flex items-center justify-between">
         <div className="flex items-center">
           <Bot className="h-6 w-6 mr-3 text-white" />
@@ -106,7 +105,6 @@ export function MovesHistorySidebar({
         </Button>
       </div>
 
-      {/* Strategic Insights */}
       {gameAnalysis?.strategicInsights?.length > 0 && (
         <div className="bg-[#FFF3E0] p-3 flex items-center">
           <AlertTriangle className="h-5 w-5 mr-3 text-[#FF9800]" />
@@ -120,7 +118,6 @@ export function MovesHistorySidebar({
         </div>
       )}
 
-      {/* Special Card Analytics */}
       <div className="p-4 bg-[#F5F5F5] grid grid-cols-2 gap-3">
         {Object.entries(gameAnalysis?.specialCardCount || {}).map(
           ([key, count]) => (
@@ -141,7 +138,6 @@ export function MovesHistorySidebar({
         )}
       </div>
 
-      {/* Moves List */}
       <div className="flex-1 overflow-y-auto">
         <table className="w-full">
           <thead className="sticky top-0 bg-white">
@@ -154,7 +150,6 @@ export function MovesHistorySidebar({
           </thead>
           <tbody
             ref={(el) => {
-              // Auto-scroll to bottom when moves increase
               if (el && moves?.length > 0) {
                 const container = el.closest('.overflow-y-auto')
                 if (container) {
@@ -178,7 +173,6 @@ export function MovesHistorySidebar({
         </table>
       </div>
 
-      {/* Action Buttons */}
       <div className="p-4 bg-[#F5F5F5] grid grid-cols-2 gap-3">
         <Button
           variant="outline"
@@ -199,7 +193,6 @@ export function MovesHistorySidebar({
   )
 }
 
-// Memoized move row to prevent unnecessary re-renders
 const MoveRow = memo(
   ({ move, index }: { move: MoveHistoryItem; index: number }) => (
     <tr className={`${index % 2 === 0 ? 'bg-[#F9F9F9]' : 'bg-white'}`}>
@@ -210,7 +203,7 @@ const MoveRow = memo(
     </tr>
   )
 )
-// Simplified move display component
+
 const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
   if (!move) return null
 
@@ -218,10 +211,15 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
     move.player === 'player' ? (
       <span className="font-medium text-blue-600">Player</span>
     ) : (
-      <span className="font-medium text-red-600">Bot</span>
+      <>
+        {move.player === 'bot' ? (
+          <span className="font-medium text-red-600">Bot</span>
+        ) : (
+          <span className="font-medium ">Market</span>
+        )}
+      </>
     )
 
-  // Handle draw action
   if (move.action === 'draw') {
     return (
       <div className="flex items-center">
@@ -234,7 +232,6 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
 
   if (!move.card) return null
 
-  // Special card descriptions
   let specialDescription = ''
   if (move.card.value === 2) {
     specialDescription = ' (Pick 2)'
@@ -244,7 +241,6 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
     specialDescription = ' (Hold On)'
   }
 
-  // Whot card handling
   if (move.card.type === 'whot') {
     return (
       <div className="flex items-center">
@@ -265,7 +261,6 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
     )
   }
 
-  // Normal card play
   return (
     <div className="flex items-center justify-start">
       {playerName}
@@ -273,14 +268,13 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
       {getCardIcon(move.card)}
       <span className="mx-2 font-medium capitalize">{move.card.type}</span>
       <span className="mx-1">{move.card.value}</span>
-      {specialDescription && (
+      {specialDescription && move.player != 'market' && (
         <span className="mx-1 text-gray-600">{specialDescription}</span>
       )}
     </div>
   )
 })
 
-// Helper function to get the appropriate icon for a card
 function getCardIcon(card: ICard | undefined) {
   if (!card) return null
 
@@ -304,7 +298,6 @@ function getCardIcon(card: ICard | undefined) {
   }
 }
 
-// Helper function to get icon for a chosen shape
 function getShapeIcon(
   shape: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | undefined
 ) {
@@ -328,7 +321,6 @@ function getShapeIcon(
   }
 }
 
-// Bot icon component
 function Bot({ className }: { className?: string }) {
   return (
     <svg

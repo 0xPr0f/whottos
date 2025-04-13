@@ -10,10 +10,10 @@ interface Card {
 }
 
 interface MoveHistoryItem {
-  player: 'player' | 'bot'
+  player?: 'player' | 'bot' | 'market'
   card?: Card
   timestamp: Date
-  action: 'play' | 'draw'
+  action?: 'play' | 'draw'
 }
 
 interface WhotGameState {
@@ -81,7 +81,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
 
     try {
       const data = JSON.parse(message)
-      console.log(data)
+      console.log('onMessage', data)
       let result
 
       switch (data.action) {
@@ -140,6 +140,13 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     const botHand = shuffledDeck.splice(0, 5)
     const callCardPile = [shuffledDeck.pop()!]
 
+    const moveHistoryItem: MoveHistoryItem = {
+      player: 'market',
+      action: 'play',
+      card: callCardPile[0],
+      timestamp: new Date(),
+    }
+
     this.setState({
       ...this.state,
       deck: shuffledDeck,
@@ -150,7 +157,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       gameStatus: 'playing',
       winner: undefined,
       lastAction: undefined,
-      moveHistory: [],
+      moveHistory: [moveHistoryItem],
     })
 
     return { success: true }
@@ -711,7 +718,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     return deck
   }
 
-  private shuffleDeck(deck: Card[]) {
+  private shuffleDeck(deck: Card[]): Card[] {
     let shuffled = [...deck]
 
     for (let i = shuffled.length - 1; i > 0; i--) {

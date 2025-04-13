@@ -158,7 +158,8 @@ export default function PlayBot() {
       agent.send(
         JSON.stringify({
           action: 'play_card',
-          cardIndex,
+          cardIndex: cardIndex,
+          whotChoosenShape: null,
         })
       )
     }
@@ -168,7 +169,7 @@ export default function PlayBot() {
     }
   }
 
-  const selectShape = (shape: string) => {
+  const selectShape = (shape: Card['whotChoosenShape']) => {
     agent.send(
       JSON.stringify({
         action: 'play_card',
@@ -585,7 +586,7 @@ export default function PlayBot() {
                               card.type === 'whot' &&
                               card.whotChoosenShape && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                  <div className="text-5xl text-[#570000] font-bold ">
+                                  <div className="text-5xl text-[#570000] font-bold rounded-none">
                                     {card.whotChoosenShape === 'circle' && '●'}
                                     {card.whotChoosenShape === 'triangle' &&
                                       '▲'}
