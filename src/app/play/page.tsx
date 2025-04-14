@@ -158,14 +158,14 @@ export default function GamePage() {
   }, [])
 
   return (
-    <div className="p-2 bg-gradient-to-b h-fit min-h-full from-[#FFA7A6] overflow-y-auto to-[#FF8585]">
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="lg:w-2/3 h-fit w-full rounded-lg overflow-hidden hidden md:block lg:block">
+    <div className="p-2 bg-gradient-to-b min-h-full from-[#FFA7A6] overflow-y-auto to-[#FF8585]">
+      <div className="flex flex-col lg:flex-row gap-4 h-full w-full">
+        <div className="lg:w-2/3 min-h-full w-full overflow-hidden hidden md:block lg:block ">
           <GameSkeleton gameState={gameState} />
         </div>
 
         {/* Game controls and info - takes 1/3 of screen on desktop, full width on mobile */}
-        <div className="w-full lg:w-1/3 h-full border-black">
+        <div className="w-full lg:w-1/3 h-full ">
           <Sidebar
             header={
               <Card className="bg-[#570000] flex flex-row items-center justify-center text-white px-6 py-3 shadow-lg border-none">

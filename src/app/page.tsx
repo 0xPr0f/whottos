@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import WhotCard from '@/components/whot-card'
+import WhotCardDemo from '@/components/whot-card'
 import { Button } from '@/components/ui/button'
 import { Coins, Zap, Users, ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const howToPlay = [
     {
@@ -50,23 +52,37 @@ export default function Home() {
       <div className="relative min-h-[70vh] md:min-h-[80vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="grid grid-cols-3 gap-4 md:gap-8 transform rotate-12 scale-110">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-              <div
-                key={i}
-                className="floating-card transform transition-all duration-2000 ease-in-out hover:scale-110 hover:-translate-y-4 hover:rotate-0 hover:z-50"
-                style={{
-                  transform: `rotate(${Math.random() * 20 - 10}deg)`,
-                  zIndex: Math.floor(Math.random() * 10),
-                  transition: 'all 2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                }}
-              >
-                <WhotCard
-                  number={Math.floor(Math.random() * 14) + 1}
-                  shape={Math.floor(Math.random() * 5)}
-                  className="hover:shadow-2xl"
-                />
-              </div>
-            ))}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
+              // Generate different card types based on index
+              const cardTypes = [
+                'circle',
+                'triangle',
+                'cross',
+                'square',
+                'star',
+                'whot',
+              ]
+              const type = cardTypes[i % cardTypes.length] as any
+              // Generate different values between 1 and 20
+              const value = (i % 14) + 1
+
+              return (
+                <div
+                  key={i}
+                  className="floating-card transform transition-all duration-2000 ease-in-out hover:scale-110 hover:-translate-y-4 hover:rotate-0 hover:z-50"
+                  style={{
+                    transform: `rotate(${Math.random() * 20 - 10}deg)`,
+                    zIndex: Math.floor(Math.random() * 10),
+                    transition: 'all 2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  }}
+                >
+                  <WhotCardDemo
+                    card={{ type: type, value: value }}
+                    className="hover:shadow-2xl"
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -82,6 +98,9 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto">
             <Button
               size="lg"
+              onClick={() => {
+                router.push('/play/onchain')
+              }}
               className=" cursor-pointer bg-[#FFA7A6] hover:bg-[#FF8A89] text-[#570000] font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group relative before:absolute before:inset-0 before:rounded-xl before:border-2 before:border-[#FFA7A6]/50 before:shadow-[0_0_15px_rgba(255,167,166,0.7)] before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300"
             >
               <Coins className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
@@ -90,6 +109,9 @@ export default function Home() {
 
             <Button
               size="lg"
+              onClick={() => {
+                router.push('/play/bot')
+              }}
               className="cursor-pointer bg-white hover:bg-gray-100 text-[#570000] font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group relative before:absolute before:inset-0 before:rounded-xl before:border-2 before:border-white/50 before:shadow-[0_0_15px_rgba(255,255,255,0.7)] before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300"
             >
               <Zap className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
@@ -181,7 +203,7 @@ export default function Home() {
         </div>
       </div>
 
-      <footer className="bg-[#3D0000] text-white py-8 px-4">
+      {/*}  <footer className="bg-[#3D0000] text-white py-8 px-4">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-xl font-bold mb-4 flex items-center">
@@ -212,7 +234,7 @@ export default function Home() {
                   Custom Games
                 </a>
               </li>
-*/}
+
             </ul>
           </div>
 
@@ -253,7 +275,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-white/20 text-center text-white/50 text-sm">
           &copy; {new Date().getFullYear()} Whot.gg. All rights reserved.
         </div>
-      </footer>
+      </footer> */}
     </main>
   )
 }

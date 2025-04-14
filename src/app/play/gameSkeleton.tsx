@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronUp, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useRef, useState } from 'react'
-import { WhotCard } from './bot/page'
+import { WhotCard } from './bot/helper'
 
 interface Card {
   type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'

@@ -17,6 +17,10 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import {
+  generateCardBack,
+  generateWhotCards,
+} from '@/components/whot-card/card-svg-generation/generate-cards'
 
 interface ICard {
   type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
@@ -337,5 +341,38 @@ function Bot({ className }: { className?: string }) {
       <line x1="8" x2="8" y1="16" y2="16" />
       <line x1="16" x2="16" y1="16" y2="16" />
     </svg>
+  )
+}
+
+export const WhotCard = ({
+  card,
+  faceDown,
+  className,
+}: {
+  card: ICard
+  faceDown?: boolean
+  className?: string
+}) => {
+  if (!card) return null
+
+  if (faceDown) {
+    return (
+      <div className={cn('h-32 w-20', className)}>{generateCardBack()}</div>
+    )
+  }
+
+  return (
+    <div className={cn('h-32 w-20', className)}>
+      {generateWhotCards({
+        cardType: card.type as
+          | 'circle'
+          | 'square'
+          | 'triangle'
+          | 'cross'
+          | 'star'
+          | 'whot',
+        cardNumber: card.value,
+      })}
+    </div>
   )
 }

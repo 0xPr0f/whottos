@@ -3,28 +3,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useAgent } from 'agents/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import {
-  RefreshCw,
-  AlertCircle,
-  Award,
-  Link,
-  Zap,
-  XIcon,
-  LayoutGrid,
-  ChevronUp,
-  Menu,
-  Eye,
-  EyeOff,
-  Trophy,
-} from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { RefreshCw, XIcon, LayoutGrid, ChevronUp, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  generateCardBack,
-  generateWhotCards,
-} from '@/components/whot-card/card-svg-generation/generate-cards'
-import WithSidebar from '../helper/sidebar'
 import { MovesHistorySidebar } from './helper'
+import { WhotCard } from './helper'
 
 interface Card {
   type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
@@ -286,7 +268,7 @@ export default function PlayBot() {
     console.log(gameState?.moveHistory)
   }, [gameState?.moveHistory])
   return (
-    <div className=" bg-[#FFA7A6] flex flex-col overflow-y-auto min-h-fit">
+    <div className=" bg-[#FFA7A6] flex flex-col overflow-y-auto min-h-fit ">
       <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold">VS</h2> <span> Advance AI</span>
@@ -1075,39 +1057,6 @@ export default function PlayBot() {
           </motion.div>
         </div>
       )}
-    </div>
-  )
-}
-
-export function WhotCard({
-  card,
-  faceDown,
-  className,
-}: {
-  card: Card
-  faceDown?: boolean
-  className?: string
-}) {
-  if (!card) return null
-
-  if (faceDown) {
-    return (
-      <div className={cn('h-32 w-20', className)}>{generateCardBack()}</div>
-    )
-  }
-
-  return (
-    <div className={cn('h-32 w-20', className)}>
-      {generateWhotCards({
-        cardType: card.type as
-          | 'circle'
-          | 'square'
-          | 'triangle'
-          | 'cross'
-          | 'star'
-          | 'whot',
-        cardNumber: card.value,
-      })}
     </div>
   )
 }
