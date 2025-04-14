@@ -207,18 +207,16 @@ const MoveRow = memo(
 const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
   if (!move) return null
 
-  const playerName =
-    move.player === 'player' ? (
-      <span className="font-medium text-blue-600">Player</span>
-    ) : (
-      <>
-        {move.player === 'bot' ? (
-          <span className="font-medium text-red-600">Bot</span>
-        ) : (
-          <span className="font-medium ">Market</span>
-        )}
-      </>
-    )
+  const playerName = (() => {
+    switch (move.player) {
+      case 'player':
+        return <span className="font-medium text-blue-600">Player</span>
+      case 'bot':
+        return <span className="font-medium text-red-600">Bot</span>
+      default:
+        return <span className="font-medium">Market</span>
+    }
+  })()
 
   if (move.action === 'draw') {
     return (
