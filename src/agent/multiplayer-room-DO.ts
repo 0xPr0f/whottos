@@ -5,9 +5,11 @@ interface Player {
   name: string
   score: number
   connected: boolean
+  lastSeen: number
 }
 
 export class MultiplayerRoomDO extends DurableObject<Env> {
+  private readonly DISCONNECT_TIMEOUT = 5 * 60 * 1000
   private state: DurableObjectState
   private players: Player[] = []
   private wsMap = new Map<string, WebSocket>()
@@ -20,6 +22,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       this.players = (stored || []).map((p) => ({
         ...p,
         connected: false,
+        lastSeen: p.lastSeen || Date.now(),
       }))
       this.cleanupDisconnectedPlayers()
     })
@@ -70,11 +73,12 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           name: playerName,
           score: 0,
           connected: true,
+          lastSeen: Date.now(),
         }
         this.players.push(pl)
       } else {
         pl.connected = true
-
+        pl.lastSeen = Date.now()
         pl.name = playerName
       }
       this.wsMap.set(playerId, ws)
@@ -83,7 +87,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       const pl = this.players.find((p) => p.id === playerId)
       if (pl) {
         pl.score += 1
-
+        pl.lastSeen = Date.now()
         await persistAndBroadcast('score-update')
       }
     }
@@ -96,15 +100,16 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         const pl = this.players.find((p) => p.id === id)
         if (pl) {
           pl.connected = false
-
+          pl.lastSeen = Date.now()
           await this.state.storage.put('players', this.players)
           this.broadcast({
             type: 'player-left',
             playerId: id,
             players: this.players,
           })
-
-          await this.state.storage.setAlarm(Date.now())
+          await this.state.storage.setAlarm(
+            Date.now() + this.DISCONNECT_TIMEOUT
+          )
         }
         break
       }
@@ -124,8 +129,11 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   }
 
   private async cleanupDisconnectedPlayers() {
+    const cutoff = Date.now() - this.DISCONNECT_TIMEOUT
     const before = this.players.length
-    this.players = this.players.filter((p) => p.connected)
+    this.players = this.players.filter(
+      (p) => p.connected || p.lastSeen > cutoff
+    )
     if (this.players.length !== before) {
       await this.state.storage.put('players', this.players)
       this.broadcast({ type: 'room-update', players: this.players })
