@@ -89,12 +89,17 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
           result = await this.startGame()
           break
 
-        case 'play_card':
-          result = await this.playerPlayCard(
-            data.cardIndex,
-            data.whotChoosenShape
-          )
+        case 'play_card': {
+          if (
+            this.isValidMove(this.getPlayerView().playerHand[data.cardIndex])
+          ) {
+            result = await this.playerPlayCard(
+              data.cardIndex,
+              data.whotChoosenShape
+            )
+          }
           break
+        }
         case 'draw_card':
           result = await this.playerDrawCard()
           break
@@ -434,7 +439,8 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       }
       const response = await this.cloudflareHostedBot(gameState)
 
-      content = (response as any).response
+      content = JSON.stringify((response as any).response)
+      console.log(content)
       let strategy
 
       if (content.startsWith('```json')) {

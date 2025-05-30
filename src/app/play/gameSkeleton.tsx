@@ -99,7 +99,6 @@ export default function GameSkeleton({
       scale: 1,
     }
   }
-
   return (
     <div className="w-full h-full">
       <div className="flex-1 flex flex-col p-4">
@@ -195,7 +194,7 @@ export default function GameSkeleton({
             <h4 className="text-[#570000] text-sm font-bold mb-1">Call Card</h4>
             <div className="relative h-32 w-20">
               {gameState.callCardPile
-                .slice(-3) // Limit to top 3 cards
+                .slice(-1) // Limit to top 1 cards
                 .map((card: Card, index, array) => {
                   const isTopCard = index === array.length - 1
 
@@ -387,22 +386,6 @@ export default function GameSkeleton({
               </AnimatePresence>
             </div>
           </div>
-
-          {isSmallScreen && (
-            <div className="absolute bottom-1 left-0 right-0 flex justify-center z-50">
-              <Button
-                onClick={() => setShowCardView(!showCardView)}
-                className="bg-[#570000] hover:bg-[#3D0000] text-white rounded-full"
-              >
-                {showCardView ? (
-                  <ChevronUp className="mr-2 h-4 w-4" />
-                ) : (
-                  <LayoutGrid className="mr-2 h-4 w-4" />
-                )}
-                {showCardView ? 'Close Cards' : 'View All Cards'}
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useAgent } from 'agents/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, XIcon, LayoutGrid, ChevronUp, Trophy } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, localWranglerHost } from '@/lib/utils'
 import { MovesHistorySidebar } from './helper'
 import { WhotCard } from './helper'
 
@@ -100,7 +100,7 @@ export default function PlayBot() {
   const agent = useAgent({
     agent: 'whot-game-agent',
     name: gameId,
-    host: process.env.NEXT_PUBLIC_WHOT_AGENT_HOST || 'http://localhost:8787',
+    host: process.env.NEXT_PUBLIC_WHOT_AGENT_HOST ?? localWranglerHost,
     onOpen: () => {
       console.log('Connected to Whot game')
       setIsConnected(true)
@@ -130,7 +130,6 @@ export default function PlayBot() {
 
   const playCard = (cardIndex: number) => {
     if (gameState?.currentPlayer !== 'player' || isBotThinking) return
-
     const card = gameState?.playerHand[cardIndex]
     console.log(card)
     if (card?.value === 20) {
@@ -383,16 +382,16 @@ export default function PlayBot() {
                       </li>
                       <li className="flex items-start text-xs">
                         <span className="text-[#570000] mr-2">-</span>
-                        <span>Circle 1: Skip next player</span>
+                        <span>Card Number 1: Skip next player</span>
                       </li>
                       <li className="flex items-start text-xs">
                         <span className="text-[#570000] mr-2">-</span>
-                        <span>Circle 2: Next player picks 2 cards</span>
+                        <span>Card Number 2: Next player picks 2 cards</span>
                       </li>
 
                       <li className="flex items-start text-xs">
                         <span className="text-[#570000] mr-2">-</span>
-                        <span>Circle 14: All players pick a card</span>
+                        <span>Card Number 14: All players pick a card</span>
                       </li>
                     </ul>
                   </li>
@@ -404,6 +403,13 @@ export default function PlayBot() {
                   <li className="flex items-start">
                     <span className="text-[#570000] mr-2">•</span>
                     <span>First player to use all their cards wins!</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-[#570000] mr-2">•</span>
+                    <span>
+                      When the market is empty, the player with the highest card
+                      number loses!
+                    </span>
                   </li>
                 </ul>
               </motion.div>
@@ -527,7 +533,7 @@ export default function PlayBot() {
                 </h4>
                 <div className="relative h-32 w-20">
                   {gameState.callCardPile
-                    .slice(-3) // Limit to top 3 cards
+                    .slice(-3)
                     .map((card: Card, index, array) => {
                       const isTopCard = index === array.length - 1
 
@@ -610,7 +616,6 @@ export default function PlayBot() {
               </div>
             </div>
 
-            {/* Player's Cards */}
             <div className=" h-52">
               <h3 className="text-[#570000] font-bold mb-2 flex items-center flex-wrap">
                 <span className="flex items-center">
@@ -719,10 +724,8 @@ export default function PlayBot() {
                             position: isSmallScreen ? 'relative' : 'absolute',
                             left: isSmallScreen ? 'auto' : '50%',
                           }}
-                          onClick={() => isPlayable && playCard(index)}
-                          onTouchStart={(e) => {
+                          onClick={(e) => {
                             e.stopPropagation()
-                            e.preventDefault()
                             if (isPlayable) {
                               playCard(index)
                             }
@@ -759,6 +762,7 @@ export default function PlayBot() {
               <MovesHistorySidebar
                 moves={gameState.moveHistory}
                 setWhotInsightShow={closeInsightCallback}
+                onNewGame={startGame}
               />
             </div>
           )}

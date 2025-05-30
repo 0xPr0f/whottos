@@ -1,52 +1,77 @@
-import { io, Socket } from 'socket.io-client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { localWranglerHost, toWebSocketURL } from './utils'
 
-let socket: Socket | null = null
-
-export const useSocket = () => {
-  const [isConnected, setIsConnected] = useState(false)
+export function useWebSocket(roomId: string, playerId: string) {
+  const wsRef = useRef<WebSocket | null>(null)
+  const [isConnected, setConnected] = useState(false)
+  const [messages, setMessages] = useState<any[]>([])
+  const reconnectRef = useRef(0)
+  const maxRetries = 5
 
   useEffect(() => {
-    if (!socket) {
-      // Initialize socket connection
-      socket = io(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin, {
-        path: '/api/socketio',
-      })
-    }
+    let retryTimeout: any
 
-    socket.on('connect', () => {
-      console.log('Socket connected')
-      setIsConnected(true)
-    })
+    const connect = () => {
+      const host = process.env.NEXT_PUBLIC_WHOT_AGENT_HOST || localWranglerHost
+      const wsUrl =
+        toWebSocketURL(`${host}/room/${roomId}`) + `?playerId=${playerId}`
+      const ws = new WebSocket(wsUrl)
 
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected')
-      setIsConnected(false)
-    })
-    socket.on('join-room', () => {
-      console.log('Joined game')
-    })
-
-    return () => {
-      if (socket) {
-        socket.off('connect')
-        socket.off('disconnect')
+      ws.onopen = () => {
+        setConnected(true)
+        reconnectRef.current = 0
+        wsRef.current = ws
+      }
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data)
+          setMessages((m) => [...m, data])
+        } catch {}
+      }
+      ws.onclose = () => {
+        setConnected(false)
+        wsRef.current = null
+        if (reconnectRef.current < maxRetries) {
+          retryTimeout = setTimeout(() => {
+            reconnectRef.current += 1
+            connect()
+          }, 1000)
+        }
+      }
+      ws.onerror = () => {
+        ws.close()
       }
     }
+
+    connect()
+    return () => {
+      clearTimeout(retryTimeout)
+      wsRef.current?.close()
+      setMessages([])
+    }
+  }, [roomId])
+
+  const send = useCallback((msg: any) => {
+    const ws = wsRef.current
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
   }, [])
 
-  return { socket, isConnected }
+  return { isConnected, messages, send }
 }
 
-// Join a room
-export const joinRoom = (roomId: string, playerName: string) => {
-  if (!socket) return
-  socket.emit('join-room', { roomId, playerName })
+export const joinRoom = (
+  roomId: string,
+  playerName: string,
+  playerId: string,
+  send: (m: any) => void
+) => {
+  send({ type: 'join-room', roomId, playerName, playerId })
 }
 
-// Click button
-export const clickButton = (roomId: string) => {
-  if (!socket) return
-  socket.emit('click-button', { roomId })
-  console.log('button clicked', roomId)
+export const clickButton = (
+  roomId: string,
+  playerId: string,
+  send: (m: any) => void
+) => {
+  send({ type: 'click-button', roomId, playerId })
 }

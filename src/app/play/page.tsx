@@ -65,6 +65,7 @@ interface GameState {
     action: 'play' | 'draw'
     card?: ICard
   } | null
+  moveHistory?: any[] // Adding moveHistory to match GameSkeleton expectations
 }
 
 // Main component
@@ -79,8 +80,9 @@ export default function GamePage() {
     gameStatus: 'waiting',
     winner: null,
     lastAction: null,
+    moveHistory: [], // Initialize moveHistory as empty array
   })
-
+  const [isBotThinking, setIsBotThinking] = useState(false)
   const [cards, setCards] = useState<ICard[] | null>()
   const { toast } = useToast()
 
@@ -130,6 +132,19 @@ export default function GamePage() {
     return shuffled
   }
 
+  // Mock functions to pass to GameSkeleton
+  const drawCard = () => {
+    console.log('Drawing card')
+  }
+
+  const playCard = (index: number) => {
+    console.log('Playing card at index', index)
+  }
+
+  const closeInsightCallback = () => {
+    console.log('Closing insight')
+  }
+
   useEffect(() => {
     // Create and shuffle the deck
     const newDeck = createDeck()
@@ -154,6 +169,7 @@ export default function GamePage() {
       gameStatus: 'playing',
       winner: null,
       lastAction: null,
+      moveHistory: [],
     })
   }, [])
 
@@ -161,7 +177,13 @@ export default function GamePage() {
     <div className="p-2 bg-gradient-to-b min-h-full from-[#FFA7A6] overflow-y-auto to-[#FF8585]">
       <div className="flex flex-col lg:flex-row gap-4 h-full w-full">
         <div className="lg:w-2/3 min-h-full w-full overflow-hidden hidden md:block lg:block ">
-          <GameSkeleton gameState={gameState} />
+          <GameSkeleton
+            gameState={gameState}
+            isBotThinking={isBotThinking}
+            drawCard={drawCard}
+            playCard={playCard}
+            closeInsightCallback={closeInsightCallback}
+          />
         </div>
 
         {/* Game controls and info - takes 1/3 of screen on desktop, full width on mobile */}

@@ -1,14 +1,19 @@
-name = "whot-game-agent"
+name = "whot-game"
 main = "src/agent/index.ts"
 compatibility_date = "2024-03-24"
 
-# Durable Object bindings
-[durable_objects]
-bindings = [{ name = "whot-game-agent", class_name = "WhotGameAgent" }]
+
+[[durable_objects.bindings]]
+name = "MultiplayerRoomDO"
+class_name = "MultiplayerRoomDO"
+
+[[durable_objects.bindings]]
+name = "whot-game-agent"
+class_name = "WhotGameAgent"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["WhotGameAgent"]
+new_sqlite_classes = ["WhotGameAgent", "MultiplayerRoomDO"]
 
 # Optional: AI integration bindings if you're using them
 [ai]
