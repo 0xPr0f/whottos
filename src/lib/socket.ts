@@ -9,7 +9,7 @@ export function useWebSocket(
   const wsRef = useRef<WebSocket | null>(null)
   const [isConnected, setConnected] = useState(false)
   const [messages, setMessages] = useState<any[]>([])
-  const pendingQueue = useRef<any[]>([])
+  const pendingQueue = useRef<any[]>([]) // Queue for messages before connection
   const reconnectAttempts = useRef(0)
   const MAX_RECONNECT = 10
   const RECONNECT_DELAY = 200
@@ -27,7 +27,6 @@ export function useWebSocket(
       console.log('WebSocket opened')
       setConnected(true)
       reconnectAttempts.current = 0
-
       ws.send(
         JSON.stringify({ type: 'join-room', roomId, playerId, playerName })
       )
@@ -87,7 +86,6 @@ export function useWebSocket(
 
   useEffect(() => {
     connect()
-
     const handleVisibilityChange = () => {
       if (
         document.visibilityState === 'visible' &&
@@ -97,7 +95,7 @@ export function useWebSocket(
         connect()
       }
     }
-    document.addEventListener('icsi.org', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -116,6 +114,7 @@ export function useWebSocket(
       } else {
         pendingQueue.current.push(payload)
         console.log('WebSocket not open, queued message:', payload)
+
         if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
           connect()
         }
@@ -124,11 +123,7 @@ export function useWebSocket(
     [connect]
   )
 
-  const clearMessages = useCallback(() => {
-    setMessages([])
-  }, [])
-
-  return { isConnected, messages, send, clearMessages }
+  return { isConnected, messages, send }
 }
 
 export const joinRoom = (

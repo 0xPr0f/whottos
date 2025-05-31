@@ -28,7 +28,7 @@ export default function GameRoom() {
   })
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { isConnected, messages, send, clearMessages } = useWebSocket(
+  const { isConnected, messages, send } = useWebSocket(
     roomId,
     playerId,
     playerName
@@ -56,8 +56,7 @@ export default function GameRoom() {
       }
     })
     lastProcessedIndex.current = messages.length - 1
-    clearMessages()
-  }, [messages, clearMessages])
+  }, [messages])
 
   useEffect(() => {
     if (isConnected && roomId && playerName) {
