@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useWebSocket, joinRoom, clickButton } from '@/lib/socket'
 
 interface Player {
@@ -12,74 +12,62 @@ interface Player {
 }
 
 export default function GameRoom() {
-  const params = useParams() ?? { room: '' }
-  const roomId = params.room as string
+  const { room } = useParams() ?? { room: '' }
+  const roomId = room as string
 
   const [players, setPlayers] = useState<Player[]>([])
-  const [playerName, setPlayerName] = useState('John')
-  const [playerId, setPlayerId] = useState<string>(() => {
-    const storedId = localStorage.getItem('playerId')
-    return (
-      storedId || `player-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    )
+  const [playerName, setPlayerName] = useState(() => {
+    return localStorage.getItem('playerName') || 'John'
   })
-  const [joined, setJoined] = useState(false)
+  const [playerId] = useState(() => {
+    const stored = localStorage.getItem('playerId')
+    if (stored) return stored
+    const newId = `player-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    localStorage.setItem('playerId', newId)
+    return newId
+  })
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [lastMessageId, setLastMessageId] = useState<string>('')
-  const { isConnected, messages, send } = useWebSocket(roomId, playerId)
-  useEffect(() => {
-    const storedName = localStorage.getItem('playerName')
-    if (storedName) {
-      setPlayerName(storedName)
-    }
-    localStorage.setItem('playerId', playerId)
-  }, [playerId])
+  const { isConnected, messages, send, clearMessages } = useWebSocket(
+    roomId,
+    playerId,
+    playerName
+  )
+  const lastProcessedIndex = useRef(-1)
 
   useEffect(() => {
-    messages.forEach((data) => {
-      const messageId = `${data.type}-${JSON.stringify(
-        data.players || data.playerId
-      )}-${Date.now()}`
-      if (messageId === lastMessageId) {
-        console.log('Duplicate message ignored:', data)
-        return
-      }
-      setLastMessageId(messageId)
+    localStorage.setItem('playerName', playerName)
+  }, [playerName])
 
+  useEffect(() => {
+    const newMessages = messages.slice(lastProcessedIndex.current + 1)
+    newMessages.forEach((data) => {
       switch (data.type) {
-        case 'joined':
-          console.log('Joined game:', data)
-          break
         case 'room-update':
-          console.log('Room update received:', data)
+        case 'score-update':
+        case 'player-left':
           setPlayers(data.players || [])
           setError(null)
           break
-        case 'score-update':
-          console.log('Score update received:', data)
-          setPlayers(data.players || [])
+        case 'pong':
           break
-        case 'player-left':
-          console.log('Player left:', data)
-          setPlayers(data.players || [])
-          break
+        default:
+          console.warn('Unknown message:', data)
       }
     })
-  }, [messages])
+    lastProcessedIndex.current = messages.length - 1
+    clearMessages()
+  }, [messages, clearMessages])
 
   useEffect(() => {
-    if (isConnected && roomId && playerName && !joined) {
-      console.log(`Joining room ${roomId} as ${playerName} with ID ${playerId}`)
+    if (isConnected && roomId && playerName) {
+      console.log(`Joining room ${roomId} as ${playerName}`)
       joinRoom(roomId, playerName, playerId, send)
-      localStorage.setItem('playerName', playerName)
-      setJoined(true)
     }
-  }, [isConnected, roomId, playerName, joined, playerId])
+  }, [isConnected, roomId, playerName, playerId, send])
 
   const handleClick = () => {
     if (roomId && isConnected) {
-      console.log('Clicking button in room:', roomId)
       clickButton(roomId, playerId, send)
     }
   }
@@ -98,13 +86,17 @@ export default function GameRoom() {
       })
   }
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPlayerName(e.target.value)
+  }
+
   if (!roomId) {
     return <div className="p-8 text-center">Loading...</div>
   }
 
   return (
     <div className="container mx-auto p-4 max-w-md">
-      <title>Click Battle - Room {roomId}</title>
+      <title>Click Battle – Room {roomId}</title>
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h1 className="text-2xl font-bold mb-2 text-center">Click Battle</h1>
         {error && (
@@ -123,14 +115,22 @@ export default function GameRoom() {
             {copied ? 'Copied!' : 'Share'}
           </button>
         </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Your Name</label>
+          <input
+            type="text"
+            value={playerName}
+            onChange={handleNameChange}
+            className="w-full p-2 border rounded"
+            placeholder="Enter your name"
+          />
+        </div>
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-center">Players</h2>
           <div className="bg-gray-100 rounded-lg p-4">
             {players.length === 0 ? (
               <p className="text-center text-gray-500">
-                {isConnected
-                  ? 'Waiting for players...'
-                  : 'Connecting to server...'}
+                {isConnected ? 'Waiting for players…' : 'Connecting…'}
               </p>
             ) : (
               <div className="space-y-2">
