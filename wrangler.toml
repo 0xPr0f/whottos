@@ -15,7 +15,6 @@ class_name = "WhotGameAgent"
 tag = "v1"
 new_sqlite_classes = ["WhotGameAgent", "MultiplayerRoomDO"]
 
-# Optional: AI integration bindings if you're using them
 [ai]
 binding = "AI"
 

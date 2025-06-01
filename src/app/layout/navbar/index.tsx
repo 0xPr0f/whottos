@@ -116,6 +116,11 @@ export default function WhotNavbar({
     e.preventDefault()
     console.log('Searching for:', searchQuery)
   }
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+  const handleNavClick = () => {
+    setIsSheetOpen(false)
+  }
 
   const bottomNavContentRender = (item: any) => {
     return (
@@ -286,12 +291,12 @@ export default function WhotNavbar({
         )}
       >
         <header className="sticky top-0 z-10 flex items-center justify-between bg-[#570000] p-4 text-white md:hidden">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-[#3D0000] hover:text-white  transition-transform duration-300 hover:scale-110"
+                className="text-white hover:bg-[#3D0000] hover:text-white transition-transform duration-300 hover:scale-110"
               >
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Open menu</span>
@@ -300,21 +305,21 @@ export default function WhotNavbar({
             <SheetContent
               side="left"
               className="w-[170px] p-0 bg-[#570000] border-[#3D0000]"
-              aria-describedby={'mobile:navigation-description'}
-              hideCloseButton={true}
+              aria-describedby="mobile:navigation-description"
             >
               <SheetHeader className="p-4 flex flex-row items-center h-16 justify-between">
                 <SheetTitle className="text-white">
                   <Link
                     href="/"
                     className="flex items-center gap-2 text-lg font-bold group"
+                    onClick={handleNavClick}
                   >
                     <WhotLogo className="h-6 w-6 text-white transition-transform duration-300 group-hover:rotate-12" />
                     <span>Whot.gg</span>
                   </Link>
                 </SheetTitle>
                 <SheetDescription
-                  id="navigation-description"
+                  id="mobile:navigation-description"
                   className="sr-only"
                 >
                   Navigation menu for Whot.gg
@@ -340,9 +345,10 @@ export default function WhotNavbar({
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-300 ease-in-out group relative overflow-hidden'
                         )}
+                        onClick={handleNavClick}
                       >
                         <span className="absolute inset-0 bg-[#3D0000] opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"></span>
-                        <span className=" text-white flex-shrink-0 relative z-10 transition-transform duration-300 ease-in-out group-hover:scale-110 group-hover:rotate-12">
+                        <span className="text-white flex-shrink-0 relative z-10 transition-transform duration-300 ease-in-out group-hover:scale-110 group-hover:rotate-12">
                           {item.icon}
                         </span>
                         <span
@@ -393,7 +399,10 @@ export default function WhotNavbar({
                       <Button
                         variant="ghost"
                         className="w-full cursor-pointer justify-start text-white/70 hover:bg-[#3D0000] hover:text-white group relative overflow-hidden px-3 py-2"
-                        onClick={item.onClick}
+                        onClick={() => {
+                          item.onClick?.()
+                          handleNavClick()
+                        }}
                       >
                         <span className="absolute inset-0 bg-[#3D0000] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
                         <span className="relative z-10 transition-transform duration-300 group-hover:rotate-12">
@@ -409,7 +418,6 @@ export default function WhotNavbar({
               </div>
             </SheetContent>
           </Sheet>
-
           {/*} <Button
             variant="ghost"
             size="icon"
