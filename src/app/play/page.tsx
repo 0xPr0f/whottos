@@ -16,6 +16,7 @@ import {
   MessageSquare,
   History,
   Award,
+  Handshake,
 } from 'lucide-react'
 import { Bot, Zap, Dice1Icon as Dice } from 'lucide-react'
 
@@ -65,10 +66,9 @@ interface GameState {
     action: 'play' | 'draw'
     card?: ICard
   } | null
-  moveHistory?: any[] // Adding moveHistory to match GameSkeleton expectations
+  moveHistory?: any[]
 }
 
-// Main component
 export default function GamePage() {
   const [gameState, setGameState] = useState<GameState>({
     gameId: Math.random().toString(36).substring(2, 15),
@@ -80,7 +80,7 @@ export default function GamePage() {
     gameStatus: 'waiting',
     winner: null,
     lastAction: null,
-    moveHistory: [], // Initialize moveHistory as empty array
+    moveHistory: [],
   })
   const [isBotThinking, setIsBotThinking] = useState(false)
   const [cards, setCards] = useState<ICard[] | null>()
@@ -122,7 +122,6 @@ export default function GamePage() {
     return deck
   }
 
-  // Function to shuffle a deck of cards
   const shuffleDeck = (deck: ICard[]) => {
     const shuffled = [...deck]
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -132,7 +131,6 @@ export default function GamePage() {
     return shuffled
   }
 
-  // Mock functions to pass to GameSkeleton
   const drawCard = () => {
     console.log('Drawing card')
   }
@@ -146,14 +144,11 @@ export default function GamePage() {
   }
 
   useEffect(() => {
-    // Create and shuffle the deck
     const newDeck = createDeck()
     const shuffledDeck = shuffleDeck(newDeck)
 
-    // Set the cards state
     setCards(shuffledDeck)
 
-    // Deal cards to players and set up initial game state
     const playerHand = shuffledDeck.slice(0, 5)
     const botHand = shuffledDeck.slice(5, 10)
     const firstCard = [shuffledDeck[10]]
@@ -186,7 +181,6 @@ export default function GamePage() {
           />
         </div>
 
-        {/* Game controls and info - takes 1/3 of screen on desktop, full width on mobile */}
         <div className="w-full lg:w-1/3 h-full ">
           <Sidebar
             header={
@@ -222,7 +216,7 @@ export default function GamePage() {
                 </Link>
                 <Link href="/play/room" className="block">
                   <GameOption
-                    icon={<div className="text-2xl">🤝</div>}
+                    icon={<Handshake size={32} />}
                     title="Play a Friend"
                     description="Invite a friend to a game of Whot"
                     onClick={() => {
@@ -274,14 +268,6 @@ export default function GamePage() {
       </div>
     </div>
   )
-}
-const startGame = (mode: string) => {
-  toast({
-    title: 'Starting Game',
-    description: `Starting a new ${mode} game`,
-  })
-  // Navigate to the game page
-  window.location.href = '/game-2d'
 }
 
 const GameOption = ({

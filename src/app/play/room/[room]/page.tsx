@@ -17,11 +17,15 @@ import {
   Trophy,
   LayoutGrid,
   ChevronUp,
+  Check,
+  Copy,
+  X,
 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { WhotCard } from '../../bot/helper'
 import { MovesHistorySidebar } from '../../bot/helper'
+import { QRCodeCanvas } from 'qrcode.react'
 
 interface Player {
   id: string
@@ -294,7 +298,7 @@ export default function GameRoom() {
     },
     [handleSendMessage]
   )
-
+  const gameLink = `${window.location.origin}/play/room/${roomId}`
   const copyRoomLink = useCallback(() => {
     const link = `${window.location.origin}/play/room/${roomId}`
     navigator.clipboard
@@ -460,12 +464,49 @@ export default function GameRoom() {
   const isFirstPlayer = players.length > 0 && players[0].id === playerId
   const isInGame = whotGame?.whotPlayers.some((p) => p.id === playerId)
 
+  const [showQR, setShowQR] = useState(false)
+  const [longPress, setLongPress] = useState(false)
+
+  useEffect(() => {
+    let timer
+    if (longPress) {
+      timer = setTimeout(() => {
+        setShowQR(true)
+      }, 500)
+    }
+    return () => clearTimeout(timer)
+  }, [longPress])
+
+  const handleMouseDown = () => {
+    setLongPress(true)
+  }
+
+  const handleMouseUp = () => {
+    setLongPress(false)
+    if (!showQR) {
+      copyRoomLink()
+    }
+  }
+
+  const handleTouchStart = (e) => {
+    e.preventDefault()
+    setLongPress(true)
+  }
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault()
+    setLongPress(false)
+    if (!showQR) {
+      copyRoomLink()
+    }
+  }
+
   if (!roomId) {
     return <div className="p-8 text-center text-[#570000]">Loading...</div>
   }
 
   return (
-    <div className="min-h-screen h-full bg-[#FFA7A6] flex flex-col overflow-y-auto">
+    <div className="h-full bg-[#FFA7A6] flex flex-col overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -568,6 +609,10 @@ export default function GameRoom() {
                   Room: {roomId}
                 </div>
                 <Button
+                  onMouseDown={handleMouseDown}
+                  onMouseUp={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
                   onClick={copyRoomLink}
                   className={`px-3 py-1 text-xs rounded-lg ${
                     copied ? 'bg-green-500' : 'bg-[#570000]'
@@ -644,31 +689,32 @@ export default function GameRoom() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 mb-6"
+                className="flex flex-col sm:flex-row gap-4 mb-6 w-full max-w-2xl mx-auto"
               >
                 <Button
                   onClick={handleTestConnection}
                   disabled={!isConnected}
-                  className={`flex-1 py-4 rounded-lg shadow-lg transition-all duration-300 text-base md:text-lg font-bold relative overflow-hidden group ${
+                  className={`relative flex-1 py-3 px-4 sm:px-6 rounded-lg shadow-lg transition-all duration-300 text-base sm:text-lg font-semibold group ${
                     isConnected
                       ? 'bg-[#570000] hover:bg-[#3D0000] text-white hover:shadow-xl hover:scale-105'
                       : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                   }`}
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-all duration-500 group-hover:translate-x-full"></span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/20 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
                   <Network className="h-5 w-5 mr-2 inline-block" />
                   Test Connection
                 </Button>
+
                 <Button
                   onClick={handleStartGame}
                   disabled={!isConnected || !isFirstPlayer || gameStarted}
-                  className={`flex-1 py-4 rounded-lg shadow-lg transition-all duration-300 text-base md:text-lg font-bold relative overflow-hidden group ${
+                  className={`relative flex-1 py-3 px-4 sm:px-6 rounded-lg shadow-lg transition-all duration-300 text-base sm:text-lg font-semibold group ${
                     isConnected && isFirstPlayer && !gameStarted
-                      ? 'bg-[#FF9190] hover:bg-[#FF7A79] text-white hover:shadow-xl hover:scale-105'
+                      ? 'bg-[#FF9190] hover:bg-[#FF7A79] content-center text-white hover:shadow-xl hover:scale-105'
                       : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                   }`}
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-all duration-500 group-hover:translate-x-full"></span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/10 via-white/20 to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
                   <Play className="h-5 w-5 mr-2 inline-block" />
                   {gameStarted ? 'Game Started' : 'Start Game'}
                 </Button>
@@ -1388,7 +1434,7 @@ export default function GameRoom() {
                 <h3 className="text-lg font-bold">Room Chat</h3>
                 <button
                   onClick={() => setShowChat(false)}
-                  className="text-white hover:text-[#FFA7A6]"
+                  className="text-white hover:text-[#FFA7A6] cursor-pointer"
                 >
                   <XIcon className="h-5 w-5" />
                 </button>
@@ -1422,7 +1468,7 @@ export default function GameRoom() {
                             : 'bg-white text-[#570000] shadow-sm'
                         }`}
                       >
-                        <p className="text-xs opacity-75">
+                        <p className="text-sm opacity-75">
                           {msg.playerName} •{' '}
                           {new Date(msg.timestamp).toLocaleTimeString()}
                         </p>
@@ -1433,22 +1479,55 @@ export default function GameRoom() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-[#570000]/20 flex items-center gap-3">
-                <textarea
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  className="flex-1 p-3 border border-[#570000]/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#570000] text-[#570000] placeholder-[#570000]/50 resize-none"
-                  rows={2}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!isConnected || !chatInput.trim()}
-                  className="bg-[#570000] hover:bg-[#3D0000] text-white rounded-full p-3"
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
+              <div className="p-4 border-t border-[#570000]/20 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {['Nice move', 'You almost got me', 'Last card'].map(
+                    (quickMessage) => (
+                      <Button
+                        key={quickMessage}
+                        onClick={() => {
+                          const chatMessage: ChatMessage = {
+                            playerId,
+                            playerName,
+                            message: quickMessage,
+                            timestamp: new Date().toISOString(),
+                          }
+                          send({
+                            type: 'chat-message',
+                            roomId,
+                            ...chatMessage,
+                          })
+                        }}
+                        disabled={!isConnected}
+                        className={`px-3 py-1 text-sm rounded-full transition-all duration-300 ${
+                          isConnected
+                            ? 'bg-[#FFA7A6] hover:bg-[#FF7A79] text-white hover:shadow-md'
+                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {quickMessage}
+                      </Button>
+                    )
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type a message..."
+                    className="flex-1 p-3 border border-[#570000]/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#570000] text-[#570000] placeholder-[#570000]/50 resize-none"
+                    rows={2}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!isConnected || !chatInput.trim()}
+                    className="bg-[#570000] hover:bg-[#3D0000] text-white rounded-full p-3"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -1478,7 +1557,7 @@ export default function GameRoom() {
                 </h3>
                 <button
                   onClick={() => setShowConfig(false)}
-                  className="text-[#570000] hover:text-[#3D0000]"
+                  className="text-[#570000] hover:text-[#3D0000] cursor-pointer"
                 >
                   <XIcon className="h-5 w-5" />
                 </button>
@@ -1524,6 +1603,57 @@ export default function GameRoom() {
               >
                 Save Settings
               </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showQR && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
+            onClick={() => setShowQR(false)}
+          >
+            <motion.div
+              className="bg-gradient-to-b from-white to-gray-50 p-6 rounded-xl shadow-2xl max-w-xs w-full mx-4 relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative flex justify-center items-center mb-3">
+                <h3 className="text-xl font-bold text-[#570000]">
+                  Scan to Join Room
+                </h3>
+                <button
+                  onClick={() => setShowQR(false)}
+                  className="absolute right-0 top-0 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex justify-center mb-4">
+                <QRCodeCanvas
+                  value={gameLink}
+                  size={180}
+                  bgColor="#ffffff"
+                  fgColor="#570000"
+                  level="H"
+                />
+              </div>
+              <div className="flex items-center justify-between bg-gray-100 rounded-lg p-2 mb-4">
+                <p className="text-sm text-gray-700 truncate">{gameLink}</p>
+                <button
+                  onClick={copyRoomLink}
+                  className="ml-2 p-1 text-[#570000] hover:text-[#3D0000] transition-colors cursor-pointer"
+                >
+                  {copied ? <Check size={20} /> : <Copy size={20} />}
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 text-center">
+                Scan the QR code or copy the link to join the game.
+              </p>
             </motion.div>
           </motion.div>
         )}

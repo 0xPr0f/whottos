@@ -24,6 +24,13 @@ export default function RoomHome() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    const player_name = localStorage.getItem('playerName')
+    if (player_name) {
+      setPlayerName(player_name)
+    }
+  }, [])
+
   const handleCreateRoom = async () => {
     if (!playerName.trim()) {
       setError('Please enter your name')
@@ -45,7 +52,7 @@ export default function RoomHome() {
       setIsRouting(true)
       setTimeout(() => {
         router.push(`/play/room/${roomId}`)
-      }, 1000)
+      }, 100)
     } catch (error) {
       setError('Failed to create room. Please try again.')
       setIsLoading(false)
@@ -54,7 +61,6 @@ export default function RoomHome() {
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!playerName.trim()) {
       setError('Please enter your name')
       return
@@ -65,11 +71,28 @@ export default function RoomHome() {
       return
     }
 
+    let extractedRoomId = roomIdInput.trim()
+    try {
+      const url = new URL(
+        roomIdInput.startsWith('http') ? roomIdInput : `https://${roomIdInput}`
+      )
+
+      const pathSegments = url.pathname.split('/')
+      extractedRoomId = pathSegments[pathSegments.length - 1]
+    } catch {
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(extractedRoomId)) {
+        setError('Invalid room ID format')
+        return
+      }
+    }
+
     localStorage.setItem('playerName', playerName)
     setIsRouting(true)
     setTimeout(() => {
-      router.push(`/play/room/${roomIdInput}`)
-    }, 1000)
+      router.push(`/play/room/${extractedRoomId}`)
+    }, 100)
   }
 
   return (
