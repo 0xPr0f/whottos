@@ -614,7 +614,7 @@ export default function GameRoom() {
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
                   onClick={copyRoomLink}
-                  className={`px-3 py-1 text-xs rounded-lg ${
+                  className={`px-3 py-1 text-xs rounded-lg select-none ${
                     copied ? 'bg-green-500' : 'bg-[#570000]'
                   } text-white hover:bg-[#3D0000] hover:scale-105 transition-all duration-300`}
                 >
