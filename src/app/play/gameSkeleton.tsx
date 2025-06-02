@@ -57,10 +57,8 @@ export default function GameSkeleton({
     const checkScreenSize = () => {
       setIsSmallScreen(window.innerWidth < 768)
     }
-
     checkScreenSize()
     window.addEventListener('resize', checkScreenSize)
-
     return () => {
       window.removeEventListener('resize', checkScreenSize)
     }

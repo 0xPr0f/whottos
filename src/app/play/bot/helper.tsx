@@ -29,7 +29,7 @@ interface ICard {
 }
 
 interface MoveHistoryItem {
-  player: 'player' | 'bot' | 'market'
+  player: 'player' | 'bot' | 'market' | string
   card?: ICard // Make card optional
   timestamp: Date
   action: 'play' | 'draw'
