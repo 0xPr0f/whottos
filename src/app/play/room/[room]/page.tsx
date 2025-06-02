@@ -254,7 +254,11 @@ export default function GameRoom() {
   }, [roomId, isConnected, playerId, send])
 
   const handleStartGame = useCallback(() => {
-    if (players[0]?.id === playerId && isConnected && !gameStarted) {
+    if (
+      players[0]?.id === playerId &&
+      isConnected &&
+      (!gameStarted || whotGame?.gameStatus === 'finished')
+    ) {
       send({
         type: 'start-game',
         roomId,
@@ -461,7 +465,7 @@ export default function GameRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFA7A6] flex flex-col overflow-y-auto">
+    <div className="min-h-screen h-full bg-[#FFA7A6] flex flex-col overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -469,9 +473,7 @@ export default function GameRoom() {
         className="bg-[#570000] w-full p-4 flex justify-between items-center"
       >
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-white">
-            Whot Multiplayer – Room {roomId}
-          </h2>
+          <h2 className="text-lg font-bold text-white">Room {roomId}</h2>
         </div>
         <div className="flex items-center">
           {/*} <Button
@@ -696,9 +698,8 @@ export default function GameRoom() {
       {gameStarted && whotGame?.gameStatus === 'playing' && (
         <div className="flex flex-col lg:flex-row flex-1 relative">
           <div className="flex-1 flex flex-col p-4 lg:w-2/3">
-            {/* Other Players' Hands */}
             {whotGame.whotPlayers.map((whotPlayer, playerIndex) => {
-              if (whotPlayer.id === playerId && isInGame) return null // Skip the current player's hand here
+              if (whotPlayer.id === playerId && isInGame) return null
               return (
                 <div key={whotPlayer.id} className="mb-8 h-fit">
                   <h3 className="text-[#570000] font-bold mb-2 flex items-center">

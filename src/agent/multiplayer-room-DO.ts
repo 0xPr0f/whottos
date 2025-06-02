@@ -19,7 +19,6 @@ interface WhotConfig {
   pick2: boolean
   pick3: boolean
   whotEnabled: boolean
-  // more config later
 }
 
 interface Card {
@@ -35,7 +34,7 @@ interface WhotPlayer {
 }
 
 interface MoveHistoryItem {
-  playerId: string
+  player: string
   action: 'play' | 'draw'
   card?: Card
   timestamp: Date
@@ -46,7 +45,7 @@ interface WhotGameState {
   deck: Card[]
   callCardPile: Card[]
   currentPlayerIndex: number
-  gameStatus: 'waiting' | 'playing' | 'finished'
+  gameStatus: 'waiting' | 'playing' | 'paused' | 'finished'
   winner?: string
   lastAction?: {
     playerId: string
@@ -68,6 +67,8 @@ interface GameState {
 export class MultiplayerRoomDO extends DurableObject<Env> {
   private readonly DISCONNECT_TIMEOUT = 15 * 60 * 1000 // 15 minutes
   private readonly MAX_WHOT_PLAYERS = 5
+  private readonly MIN_WHOT_PLAYERS = 2
+
   private state: DurableObjectState
   private players: Player[] = []
   private wsMap = new Map<string, WebSocket>()
@@ -100,15 +101,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         this.gameConfig = gameConfig || this.gameConfig
         this.gameStarted = gameStarted || false
         this.whotGame = whotGame || null
-
-        console.log('State restored from storage:', {
-          playerCount: this.players.length,
-          chatMessageCount: this.chatMessages.length,
-          gameConfig: this.gameConfig,
-          gameStarted: this.gameStarted,
-          whotGame: this.whotGame,
-        })
-
         this.cleanupDisconnectedPlayers()
         this.state.storage.setAlarm(Date.now() + 60 * 1000)
       })
@@ -123,7 +115,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     const playerId = url.searchParams.get('playerId')!
     const playerName = url.searchParams.get('playerName')
 
-    // Handle WebSocket connections
     if (request.headers.get('Upgrade') === 'websocket') {
       if (!playerId || !playerName) {
         return new Response('Missing playerId or playerName', { status: 400 })
@@ -132,9 +123,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair()
       this.state.acceptWebSocket(server, [roomId])
       this.wsMap.set(playerId, server)
-      console.log(
-        `Accepted WebSocket for playerId: ${playerId}, wsMap size: ${this.wsMap.size}`
-      )
 
       return new Response(null, { status: 101, webSocket: client })
     }
@@ -156,18 +144,17 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  async webSocketOpen(ws: WebSocket, request: Request) {
-    console.log('WebSocket opened')
-  }
+  async webSocketOpen(ws: WebSocket, request: Request) {}
 
-  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-    console.log(`Received message, wsMap size: ${this.wsMap.size}`)
+  async webSocketMessage(
+    ws: WebSocket,
+    raw: string | ArrayBuffer
+  ): Promise<void> {
     let msg: any
     try {
       msg =
         typeof raw === 'string' ? JSON.parse(raw) : JSON.parse(raw.toString())
     } catch {
-      console.log('Failed to parse message')
       return
     }
     const { type, playerId, playerName, roomId } = msg
@@ -188,13 +175,15 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           this.state.storage.put('gameStarted', this.gameStarted),
           this.state.storage.put('whotGame', this.whotGame),
         ])
-        console.log(`Persisted state for event ${evt}`, {
-          playerCount: this.players.length,
-          chatMessageCount: this.chatMessages.length,
-          gameConfig: this.gameConfig,
-          gameStarted: this.gameStarted,
-          whotGame: this.whotGame,
-        })
+        console.log(
+          `Persisted state for event ${evt}`,
+          this.whotGame
+            ? {
+                whotPlayers: this.whotGame!.whotPlayers,
+                currentPlayerIndex: this.whotGame!.currentPlayerIndex,
+              }
+            : undefined
+        )
 
         this.broadcast({
           type: evt,
@@ -223,22 +212,41 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         this.players.push(pl)
       } else {
         pl.name = playerName || pl.name
+        pl.connected = true
+        pl.lastSeen = Date.now()
       }
       this.wsMap.set(playerId, ws)
-      console.log(
-        `Player ${playerId} joined, connected: ${pl.connected}, name: ${pl.name}`
-      )
+
+      if (
+        this.whotGame &&
+        this.whotGame.whotPlayers.some((p) => p.id === playerId)
+      ) {
+        const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
+          this.players.find((pl) => pl.id === p.id && pl.connected)
+        )
+        if (
+          connectedPlayers.length >= this.MIN_WHOT_PLAYERS &&
+          this.whotGame.gameStatus === 'paused'
+        ) {
+          this.whotGame.gameStatus = 'playing'
+          console.log('Game resumed due to sufficient connected players:', {
+            connectedPlayers: connectedPlayers.length,
+            playerId,
+            timestamp: new Date().toISOString(),
+          })
+          await this.state.storage.put('whotGame', this.whotGame)
+        }
+      }
+
       await persistAndBroadcast('room-update')
     } else if (type === 'click-button') {
       if (pl) {
         pl.score += 1
-        console.log(`Player ${playerId} clicked, score: ${pl.score}`)
         await persistAndBroadcast('score-update')
       }
     } else if (type === 'ping') {
       if (pl) {
         ws.send(JSON.stringify({ type: 'pong' }))
-        console.log(`Ping from ${playerId}, responded with pong`)
       }
     } else if (type === 'chat-message') {
       const chatMessage: ChatMessage = {
@@ -259,14 +267,19 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       if (this.whotGame) {
         this.whotGame.gameConfig = this.gameConfig
       }
-      console.log(`Updated game config:`, this.gameConfig)
       await persistAndBroadcast('game-config', { config: this.gameConfig })
     } else if (type === 'start-game') {
-      if (this.players[0]?.id === playerId && !this.gameStarted) {
-        this.gameStarted = true
-        console.log(`Game started by ${playerId} with config:`, this.gameConfig)
-        await this.startWhotGame()
-        await persistAndBroadcast('start-game', { config: this.gameConfig })
+      if (
+        this.players[0]?.id === playerId &&
+        (!this.gameStarted || this.whotGame?.gameStatus === 'finished')
+      ) {
+        const result = await this.startWhotGame()
+
+        if (result.success) {
+          await persistAndBroadcast('start-game', { config: this.gameConfig })
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: result.message }))
+        }
       }
     } else if (type === 'play-card') {
       if (this.whotGame && this.whotGame.gameStatus === 'playing') {
@@ -275,18 +288,25 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           msg.cardIndex,
           msg.whotChoosenShape
         )
-        await persistAndBroadcast('whot-game-update', result)
+        if (result.success) {
+          await persistAndBroadcast('whot-game-update', result)
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: result.message }))
+        }
       }
     } else if (type === 'draw-card') {
       if (this.whotGame && this.whotGame.gameStatus === 'playing') {
         const result = await this.playerDrawCard(playerId)
-        await persistAndBroadcast('whot-game-update', result)
+        if (result.success) {
+          await persistAndBroadcast('whot-game-update', result)
+        } else {
+          ws.send(JSON.stringify({ type: 'error', message: result.message }))
+        }
       }
     }
   }
 
   async webSocketClose(ws: WebSocket) {
-    console.log('WebSocket closed, cleaning up')
     let disconnectedPlayerId: string | null = null
     for (const [id, sock] of this.wsMap.entries()) {
       if (sock === ws) {
@@ -303,22 +323,21 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
 
     try {
       await this.state.storage.put('players', this.players)
-      console.log(
-        `Persisted players state after disconnect, wsMap size: ${this.wsMap.size}`
-      )
-      if (disconnectedPlayerId) {
+
+      if (disconnectedPlayerId && this.whotGame) {
+        const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
+          this.players.find((pl) => pl.id === p.id && pl.connected)
+        )
         if (
-          this.whotGame &&
-          this.whotGame.whotPlayers.some((p) => p.id === disconnectedPlayerId)
+          connectedPlayers.length === 0 &&
+          this.whotGame.gameStatus === 'playing'
         ) {
-          const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
-            this.players.find((pl) => pl.id === p.id && pl.connected)
-          )
-          if (connectedPlayers.length < 2) {
-            this.whotGame.gameStatus = 'finished'
-            this.whotGame.winner = undefined
-            console.log('Whot game ended due to insufficient players')
-          }
+          this.whotGame.gameStatus = 'paused'
+          console.log('Game paused due to no connected players:', {
+            disconnectedPlayerId,
+            timestamp: new Date().toISOString(),
+          })
+          await this.state.storage.put('whotGame', this.whotGame)
         }
         this.broadcast({
           type: 'player-left',
@@ -357,22 +376,21 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
 
     try {
       await this.state.storage.put('players', this.players)
-      console.log(
-        `Persisted players state after error, wsMap size: ${this.wsMap.size}`
-      )
-      if (disconnectedPlayerId) {
+
+      if (disconnectedPlayerId && this.whotGame) {
+        const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
+          this.players.find((pl) => pl.id === p.id && pl.connected)
+        )
         if (
-          this.whotGame &&
-          this.whotGame.whotPlayers.some((p) => p.id === disconnectedPlayerId)
+          connectedPlayers.length === 0 &&
+          this.whotGame.gameStatus === 'playing'
         ) {
-          const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
-            this.players.find((pl) => pl.id === p.id && pl.connected)
-          )
-          if (connectedPlayers.length < 2) {
-            this.whotGame.gameStatus = 'finished'
-            this.whotGame.winner = undefined
-            console.log('Whot game ended due to insufficient players')
-          }
+          this.whotGame.gameStatus = 'paused'
+          console.log('Game paused due to WebSocket error:', {
+            disconnectedPlayerId,
+            timestamp: new Date().toISOString(),
+          })
+          await this.state.storage.put('whotGame', this.whotGame)
         }
         this.broadcast({
           type: 'player-left',
@@ -395,7 +413,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   async alarm() {
     try {
       await this.state.storage.put('players', this.players)
-      console.log('Persisted players state during alarm')
       this.cleanupDisconnectedPlayers()
       this.state.storage.setAlarm(Date.now() + 60 * 1000)
     } catch (error) {
@@ -409,12 +426,29 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     this.players = this.players.filter(
       (p) => p.connected || p.lastSeen > cutoff
     )
+
     if (this.players.length !== before) {
       try {
         await this.state.storage.put('players', this.players)
-        console.log(
-          `Cleaned disconnected players, remaining: ${this.players.length}`
-        )
+
+        if (this.whotGame) {
+          const remainingGamePlayers = this.whotGame.whotPlayers.filter((p) =>
+            this.players.find((pl) => pl.id === p.id)
+          )
+          if (remainingGamePlayers.length < this.MIN_WHOT_PLAYERS) {
+            this.whotGame.gameStatus = 'finished'
+            this.whotGame.winner = undefined
+            console.log(
+              'Game ended due to insufficient players after cleanup:',
+              {
+                remainingPlayers: remainingGamePlayers.length,
+                timestamp: new Date().toISOString(),
+              }
+            )
+            await this.state.storage.put('whotGame', this.whotGame)
+          }
+        }
+
         this.broadcast({
           type: 'room-update',
           players: this.players,
@@ -431,13 +465,10 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
 
   private broadcast(msg: any) {
     const j = JSON.stringify(msg)
-    console.log(`Broadcasting to ${this.wsMap.size} clients: ${j}`)
     for (const ws of this.wsMap.values()) {
       try {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(j)
-        } else {
-          console.log(`Skipping closed WebSocket in broadcast`)
         }
       } catch (e) {
         console.error(`Broadcast error: ${e}`)
@@ -445,7 +476,15 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     }
   }
 
-  private async startWhotGame() {
+  private async startWhotGame(): Promise<{
+    success: boolean
+    message?: string
+  }> {
+    if (this.players.length < this.MIN_WHOT_PLAYERS) {
+      return { success: false, message: 'Not enough players to start game' }
+    }
+
+    this.gameStarted = true
     const whotPlayers: WhotPlayer[] = this.players
       .slice(0, this.MAX_WHOT_PLAYERS)
       .map((player) => ({
@@ -464,7 +503,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     const callCardPile = [shuffledDeck.pop()!]
 
     const moveHistoryItem: MoveHistoryItem = {
-      playerId: 'market',
+      player: 'market',
       action: 'play',
       card: callCardPile[0],
       timestamp: new Date(),
@@ -481,8 +520,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       moveHistory: [moveHistoryItem],
       gameConfig: this.gameConfig,
     }
-
-    console.log(`Whot game started with ${whotPlayers.length} players`)
+    return { success: true }
   }
 
   private async playerPlayCard(
@@ -495,7 +533,12 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       | 'square'
       | 'star'
       | null
-  ) {
+  ): Promise<{
+    success: boolean
+    message?: string
+    gameOver?: boolean
+    winner?: string
+  }> {
     if (!this.whotGame || this.whotGame.gameStatus !== 'playing') {
       return { success: false, message: 'Game not in progress' }
     }
@@ -518,15 +561,28 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       }
     }
 
+    if (
+      card.value === 20 &&
+      (!whotChoosenShape ||
+        !['circle', 'triangle', 'cross', 'square', 'star'].includes(
+          whotChoosenShape
+        ))
+    ) {
+      return {
+        success: false,
+        message: 'Whot card requires a valid shape selection',
+      }
+    }
+
     const playerHand = [...currentPlayer.hand]
     const playedCard = playerHand.splice(cardIndex, 1)[0]
 
-    if (playedCard.type === 'whot' && whotChoosenShape) {
+    if (playedCard.value === 20 && whotChoosenShape) {
       playedCard.whotChoosenShape = whotChoosenShape
     }
 
     const moveHistoryItem: MoveHistoryItem = {
-      playerId,
+      player: playerId,
       action: 'play',
       card: playedCard,
       timestamp: new Date(),
@@ -545,18 +601,26 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     if (playerHand.length === 0) {
       this.whotGame.gameStatus = 'finished'
       this.whotGame.winner = playerId
+      console.log(this.whotGame.moveHistory)
       return { success: true, gameOver: true, winner: playerId }
     }
+
     const specialCardPlayed = this.enforceCardProperties(playedCard)
 
-    if (!specialCardPlayed) {
+    ///@note when enforcing card properties, the turn is advanced
+    /* if (!specialCardPlayed) {
       this.advanceTurn()
-    }
+    }*/
 
     return { success: true }
   }
 
-  private async playerDrawCard(playerId: string) {
+  private async playerDrawCard(playerId: string): Promise<{
+    success: boolean
+    message?: string
+    gameOver?: boolean
+    winner?: string
+  }> {
     if (!this.whotGame || this.whotGame.gameStatus !== 'playing') {
       return { success: false, message: 'Game not in progress' }
     }
@@ -575,8 +639,9 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     const drawnCard = deck.pop()!
 
     const moveHistoryItem: MoveHistoryItem = {
-      playerId,
+      player: playerId,
       action: 'draw',
+      card: drawnCard,
       timestamp: new Date(),
     }
 
@@ -585,6 +650,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     this.whotGame.lastAction = {
       playerId,
       action: 'draw',
+      card: drawnCard,
     }
     this.whotGame.moveHistory.push(moveHistoryItem)
 
@@ -596,59 +662,9 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   private advanceTurn() {
     if (!this.whotGame) return
 
-    let nextIndex =
-      (this.whotGame.currentPlayerIndex + 1) % this.whotGame.whotPlayers.length
-
-    while (
-      !this.players.find(
-        (p) => p.id === this.whotGame!.whotPlayers[nextIndex].id && p.connected
-      )
-    ) {
-      nextIndex = (nextIndex + 1) % this.whotGame.whotPlayers.length
-      if (nextIndex === this.whotGame.currentPlayerIndex) break
-    }
-    this.whotGame.currentPlayerIndex = nextIndex
-
-    const currentPlayer =
-      this.whotGame.whotPlayers[this.whotGame.currentPlayerIndex]
-    const topCard =
-      this.whotGame.callCardPile[this.whotGame.callCardPile.length - 1]
-    const canPlay = currentPlayer.hand.some((card) =>
-      this.isValidMove(card, topCard)
-    )
-
-    if (!canPlay && this.whotGame.deck.length > 0) {
-      const deck = [...this.whotGame.deck]
-      const drawnCard = deck.pop()!
-      currentPlayer.hand.push(drawnCard)
-
-      const moveHistoryItem: MoveHistoryItem = {
-        playerId: currentPlayer.id,
-        action: 'draw',
-        timestamp: new Date(),
-      }
-
-      this.whotGame.deck = deck
-      this.whotGame.lastAction = {
-        playerId: currentPlayer.id,
-        action: 'draw',
-      }
-      this.whotGame.moveHistory.push(moveHistoryItem)
-
-      nextIndex =
-        (this.whotGame.currentPlayerIndex + 1) %
-        this.whotGame.whotPlayers.length
-      while (
-        !this.players.find(
-          (p) =>
-            p.id === this.whotGame!.whotPlayers[nextIndex].id && p.connected
-        )
-      ) {
-        nextIndex = (nextIndex + 1) % this.whotGame.whotPlayers.length
-        if (nextIndex === this.whotGame.currentPlayerIndex) break
-      }
-      this.whotGame.currentPlayerIndex = nextIndex
-    }
+    const numPlayers = this.whotGame.whotPlayers.length
+    this.whotGame.currentPlayerIndex =
+      (this.whotGame.currentPlayerIndex + 1) % numPlayers
   }
 
   private enforceCardProperties(card: Card): boolean {
@@ -657,31 +673,14 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     const numPlayers = this.whotGame.whotPlayers.length
     let nextPlayerIndex = (this.whotGame.currentPlayerIndex + 1) % numPlayers
 
-    while (
-      !this.players.find(
-        (p) =>
-          p.id === this.whotGame!.whotPlayers[nextPlayerIndex].id && p.connected
-      )
-    ) {
-      nextPlayerIndex = (nextPlayerIndex + 1) % numPlayers
-      if (nextPlayerIndex === this.whotGame.currentPlayerIndex) break
-    }
-
     if (card.value === 1) {
       this.whotGame.currentPlayerIndex = (nextPlayerIndex + 1) % numPlayers
-      while (
-        !this.players.find(
-          (p) =>
-            p.id ===
-              this.whotGame!.whotPlayers[this.whotGame!.currentPlayerIndex]
-                .id && p.connected
-        )
-      ) {
-        this.whotGame.currentPlayerIndex =
-          (this.whotGame.currentPlayerIndex + 1) % numPlayers
-      }
+
+      /*this.whotGame.currentPlayerIndex =
+          (this.whotGame.currentPlayerIndex + 1) % numPlayers */
+
       return true
-    } else if (card.value === 2 && this.whotGame.gameConfig.pick2) {
+    } else if (card.value === 2 /*&& this.whotGame.gameConfig.pick2*/) {
       const deck = [...this.whotGame.deck]
       const drawnCards: Card[] = []
       if (deck.length > 0) drawnCards.push(deck.pop()!)
@@ -689,18 +688,24 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
 
       this.whotGame.deck = deck
       this.whotGame.whotPlayers[nextPlayerIndex].hand.push(...drawnCards)
-      this.whotGame.currentPlayerIndex = (nextPlayerIndex + 1) % numPlayers
-      while (
-        !this.players.find(
-          (p) =>
-            p.id ===
-              this.whotGame!.whotPlayers[this.whotGame!.currentPlayerIndex]
-                .id && p.connected
-        )
-      ) {
-        this.whotGame.currentPlayerIndex =
-          (this.whotGame.currentPlayerIndex + 1) % numPlayers
+
+      const moveHistoryItem: MoveHistoryItem = {
+        player: this.whotGame.whotPlayers[nextPlayerIndex].id,
+        action: 'draw',
+        card: drawnCards.length > 0 ? drawnCards[0] : undefined,
+        timestamp: new Date(),
       }
+      this.whotGame.moveHistory.push(moveHistoryItem)
+      if (drawnCards.length > 1) {
+        this.whotGame.moveHistory.push({
+          player: this.whotGame.whotPlayers[nextPlayerIndex].id,
+          action: 'draw',
+          card: drawnCards[1],
+          timestamp: new Date(),
+        })
+      }
+
+      this.whotGame.currentPlayerIndex = (nextPlayerIndex + 1) % numPlayers
       return true
     } else if (card.value === 14) {
       const deck = [...this.whotGame.deck]
@@ -708,10 +713,18 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         if (i !== this.whotGame.currentPlayerIndex && deck.length > 0) {
           const drawnCard = deck.pop()!
           this.whotGame.whotPlayers[i].hand.push(drawnCard)
+
+          const moveHistoryItem: MoveHistoryItem = {
+            player: this.whotGame.whotPlayers[i].id,
+            action: 'draw',
+            card: drawnCard,
+            timestamp: new Date(),
+          }
+          this.whotGame.moveHistory.push(moveHistoryItem)
         }
       }
       this.whotGame.deck = deck
-      this.whotGame.currentPlayerIndex = nextPlayerIndex
+      this.whotGame.currentPlayerIndex = this.whotGame.currentPlayerIndex
       return true
     }
 
@@ -719,7 +732,12 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     return false
   }
 
-  private endGameByCardCount() {
+  private endGameByCardCount(): {
+    success: boolean
+    message?: string
+    gameOver?: boolean
+    winner?: string
+  } {
     if (!this.whotGame)
       return { success: false, message: 'Game not in progress' }
 
@@ -740,6 +758,12 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     this.whotGame.gameStatus = 'finished'
     this.whotGame.winner = winnerId
 
+    console.log('Game ended by card count:', {
+      winnerId,
+      lowestValue,
+      timestamp: new Date().toISOString(),
+    })
+
     return { success: true, gameOver: true, winner: winnerId }
   }
 
@@ -756,50 +780,40 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       topCard ||
       this.whotGame.callCardPile[this.whotGame.callCardPile.length - 1]
 
-    if (topCard.type === 'whot' && this.whotGame.callCardPile.length === 1) {
-      return true
-    }
-
     if (card.value === 20 && topCard.value !== 20) {
       return true
     }
 
     if (topCard.value === 20 && topCard.whotChoosenShape) {
-      return topCard.whotChoosenShape === card.type
+      return card.type === topCard.whotChoosenShape || card.value === 20
     }
 
-    return topCard.type === card.type || topCard.value === card.value
+    return card.type === topCard.type || card.value === card.value
   }
 
   private createDeck(): Card[] {
     const deck: Card[] = []
 
-    // Circles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
       deck.push({ type: 'circle', value, whotChoosenShape: null })
     }
 
-    // Triangles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
       deck.push({ type: 'triangle', value, whotChoosenShape: null })
     }
 
-    // Crosses: 1, 2, 3, 5, 7, 10, 11, 13, 14
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
       deck.push({ type: 'cross', value, whotChoosenShape: null })
     }
 
-    // Squares: 1, 2, 3, 5, 7, 10, 11, 13, 14
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
       deck.push({ type: 'square', value, whotChoosenShape: null })
     }
 
-    // Stars: 1, 2, 3, 4, 5, 7, 8
     for (const value of [1, 2, 3, 4, 5, 7, 8]) {
       deck.push({ type: 'star', value, whotChoosenShape: null })
     }
 
-    // 5 "Whot" cards numbered 20
     for (let i = 0; i < 5; i++) {
       deck.push({ type: 'whot', value: 20, whotChoosenShape: null })
     }
@@ -810,13 +824,11 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   private shuffleDeck(deck: Card[]): Card[] {
     let shuffled = [...deck]
 
-    // Fisher-Yates shuffle
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
 
-    // Riffle shuffle simulation
     const performRiffleShuffle = (cards: Card[]) => {
       const half = Math.floor(cards.length / 2)
       const firstHalf = cards.slice(0, half)
@@ -844,7 +856,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       shuffled = performRiffleShuffle(shuffled)
     }
 
-    // Cut the deck
     const cutDeck = (cards: Card[]) => {
       const cutPoint = Math.floor(Math.random() * (cards.length - 5)) + 3
       return [...cards.slice(cutPoint), ...cards.slice(0, cutPoint)]
@@ -855,7 +866,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       shuffled = cutDeck(shuffled)
     }
 
-    // Additional shuffle with timestamp entropy
     const timestamp = Date.now()
     const entropyFactor = timestamp % 10
     for (let i = 0; i < entropyFactor; i++) {
