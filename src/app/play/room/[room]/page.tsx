@@ -119,7 +119,7 @@ export default function GameRoom() {
   })
   const [gameStarted, setGameStarted] = useState(false)
   const [whotGame, setWhotGame] = useState<WhotGameState | null>(null)
-  const chatContainerRef = useRef<HTMLDivElement>(null)
+  // const chatContainerRef = useRef<HTMLDivElement>(null)
   const lastProcessedIndex = useRef(-1)
   const hasJoined = useRef(false)
 
@@ -221,12 +221,6 @@ export default function GameRoom() {
       hasJoined.current = false
     }
   }, [isConnected, roomId, playerName, playerId, send])
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-    }
-  }, [chatMessages])
 
   useEffect(() => {
     if (!playerHandRef.current) return
@@ -587,14 +581,14 @@ export default function GameRoom() {
                 >
                   Whot Multiplayer
                 </motion.h1>
-                <motion.p
+                {/*} <motion.p
                   className="text-white/80 text-sm"
                   initial={{ y: -10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 >
                   Room: {roomId}
-                </motion.p>
+                </motion.p> */}
               </div>
             </div>
 
@@ -1441,7 +1435,14 @@ export default function GameRoom() {
               </div>
 
               <div
-                ref={chatContainerRef}
+                ref={(el) => {
+                  if (el && chatMessages?.length > 0) {
+                    const container = el.closest('.overflow-y-auto')
+                    if (container) {
+                      container.scrollTop = container.scrollHeight
+                    }
+                  }
+                }}
                 className="flex-1 p-4 overflow-y-auto bg-[#FFA7A6]/10"
               >
                 {chatMessages.length === 0 ? (

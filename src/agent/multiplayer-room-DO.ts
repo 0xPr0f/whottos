@@ -554,6 +554,8 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     }
 
     const card = currentPlayer.hand[cardIndex]
+    console.log('Card Played', card, this.isValidMove(card))
+
     if (!this.isValidMove(card)) {
       return {
         success: false,
@@ -582,7 +584,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     }
 
     const moveHistoryItem: MoveHistoryItem = {
-      player: playerId,
+      player: currentPlayer.name,
       action: 'play',
       card: playedCard,
       timestamp: new Date(),
@@ -639,7 +641,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     const drawnCard = deck.pop()!
 
     const moveHistoryItem: MoveHistoryItem = {
-      player: playerId,
+      player: currentPlayer.name,
       action: 'draw',
       card: drawnCard,
       timestamp: new Date(),
@@ -689,13 +691,14 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       this.whotGame.deck = deck
       this.whotGame.whotPlayers[nextPlayerIndex].hand.push(...drawnCards)
 
-      const moveHistoryItem: MoveHistoryItem = {
-        player: this.whotGame.whotPlayers[nextPlayerIndex].id,
+      /* const moveHistoryItem: MoveHistoryItem = {
+        player: this.whotGame.whotPlayers[nextPlayerIndex].name,
         action: 'draw',
         card: drawnCards.length > 0 ? drawnCards[0] : undefined,
         timestamp: new Date(),
       }
       this.whotGame.moveHistory.push(moveHistoryItem)
+*/
       if (drawnCards.length > 1) {
         this.whotGame.moveHistory.push({
           player: this.whotGame.whotPlayers[nextPlayerIndex].id,
@@ -713,16 +716,18 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         if (i !== this.whotGame.currentPlayerIndex && deck.length > 0) {
           const drawnCard = deck.pop()!
           this.whotGame.whotPlayers[i].hand.push(drawnCard)
-
+          /*
           const moveHistoryItem: MoveHistoryItem = {
-            player: this.whotGame.whotPlayers[i].id,
+            player: this.whotGame.whotPlayers[i].name,
             action: 'draw',
             card: drawnCard,
             timestamp: new Date(),
           }
           this.whotGame.moveHistory.push(moveHistoryItem)
+*/
         }
       }
+
       this.whotGame.deck = deck
       this.whotGame.currentPlayerIndex = this.whotGame.currentPlayerIndex
       return true
@@ -768,27 +773,29 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   }
 
   private isValidMove(card: Card, topCard?: Card): boolean {
-    if (
-      !this.whotGame ||
-      !this.whotGame.callCardPile ||
-      this.whotGame.callCardPile.length === 0
-    ) {
-      return false
+    if (!topCard && this.whotGame) {
+      if (
+        !this.whotGame!.callCardPile ||
+        this.whotGame.callCardPile.length === 0
+      ) {
+        return false
+      }
+      topCard =
+        this.whotGame.callCardPile[this.whotGame.callCardPile.length - 1]
     }
-
-    topCard =
-      topCard ||
-      this.whotGame.callCardPile[this.whotGame.callCardPile.length - 1]
+    if (!topCard || !this.whotGame) return false
+    if (topCard.type === 'whot' && this.whotGame.callCardPile.length === 1) {
+      return true
+    }
 
     if (card.value === 20 && topCard.value !== 20) {
       return true
     }
-
-    if (topCard.value === 20 && topCard.whotChoosenShape) {
-      return card.type === topCard.whotChoosenShape || card.value === 20
+    if (topCard.value === 20) {
+      return topCard.whotChoosenShape === card.type
     }
 
-    return card.type === topCard.type || card.value === card.value
+    return topCard.type === card.type || topCard.value === card.value
   }
 
   private createDeck(): Card[] {
