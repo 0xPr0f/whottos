@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Whot Card Game
+
+A classic Whot card game implemented using Next.js, featuring advanced real-time multiplayer capabilities through Cloudflare agents and durable objects.
+
+## Technologies Used
+
+- **Next.js**: A React framework for building server-rendered applications, providing a robust foundation for the frontend.
+- **Cloudflare Workers**: Serverless computing platform used for backend logic, including game AI and room management.
+- **Cloudflare Durable Objects**: Stateful objects for persistent storage, crucial for maintaining game room states.
+- **WebSockets**: Protocol for real-time, bidirectional communication between clients and servers, essential for multiplayer synchronization.
+- **PWSDORS (Persistent WebSocket Durable Object Room System)**: A custom system for persistent, real-time multiplayer rooms, leveraging WebSockets and Durable Objects.
+
+## Technical Overview
+
+### Architecture
+- **Frontend**: Next.js application handling user interface and interactions.
+- **Backend**: Cloudflare Workers managing game logic, AI, and room persistence via Durable Objects.
+- **Real-Time Communication**: WebSockets ensuring instant updates and synchronization across players.
+
+### Features
+- **Multiplayer Mode**: Real-time play against friends with synchronized game states.
+- **AI Opponent**: Advanced AI for single-player mode, implemented using Cloudflare agents.
+- **Persistent Rooms**: Rooms that maintain state even after player disconnection, allowing seamless rejoining.
+- **State Synchronization**: Ensures all players have a consistent view of the game state.
+
+### PWSDORS Explanation
+PWSDORS (Persistent WebSocket Durable Object Room System) is a proof of concept developed by [Prof oz](https://x.com/oziprof/status/1928960204827406596). It uses WebSockets for real-time communication and Cloudflare Durable Objects to create and manage persistent rooms. Each room can have multiple members, and their states are synchronized in real-time. This system is crucial for enabling multiplayer features in the Whot card game, allowing players to join rooms, play together, and have their game states consistently updated across all participants.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js
+- npm, yarn, pnpm, or bun
+
+### Setup
+1. Clone the repository:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/0xPr0f/whottos.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Navigate to the project directory:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd whottos
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Install dependencies:
 
-## Learn More
+```bash
+pnpm install  # or yarn, npm, bun
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Start the development server:
+```bash
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+pnpm dev  # or yarn dev, npm run dev, bun dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Open http://localhost:3000 in your browser.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
