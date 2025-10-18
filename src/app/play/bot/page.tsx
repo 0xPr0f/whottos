@@ -75,7 +75,8 @@ export default function PlayBot() {
   })()
 
   useEffect(() => {
-    if (!playerHandRef.current) return
+    const element = playerHandRef.current
+    if (!element) return
 
     const updateSizes = () => {
       if (playerHandRef.current) {
@@ -87,13 +88,11 @@ export default function PlayBot() {
     updateSizes()
     window.addEventListener('resize', updateSizes)
     const resizeObserver = new ResizeObserver(updateSizes)
-    resizeObserver.observe(playerHandRef.current)
+    resizeObserver.observe(element)
 
     return () => {
       window.removeEventListener('resize', updateSizes)
-      if (playerHandRef.current) {
-        resizeObserver.unobserve(playerHandRef.current)
-      }
+      resizeObserver.unobserve(element)
     }
   }, [gameState])
 
@@ -169,42 +168,11 @@ export default function PlayBot() {
     }
   }
 
-  useEffect(() => {
-    if (gameState?.lastAction) {
-      console.log(gameState.lastAction)
-      if (gameState.lastAction.action === 'draw') {
-        addMoveToHistory(
-          gameState.lastAction.player,
-          gameState.lastAction.action
-        )
-      } else {
-        addMoveToHistory(
-          gameState.lastAction.player,
-          gameState.lastAction.action,
-          gameState.lastAction.card
-        )
-      }
-    }
-  }, [gameState])
-
-  const addMoveToHistory = (
-    player: 'player' | 'bot',
-    action: 'play' | 'draw',
-    card?
-  ) => {
-    const newMove: MoveHistoryItem = {
-      player,
-      card,
-      timestamp: new Date(),
-      action,
-    }
-  }
-
   const getPlayerCardStyle = (index: number, totalCards: number) => {
     const cardWidth = 70
     const overlapFactor = Math.min(1, 10 / totalCards)
     const mobileAdjust = handWidth < 400 ? 0.5 : handWidth < 600 ? 0.7 : 1
-    let cardVisibleWidth = isSmallScreen
+    const cardVisibleWidth = isSmallScreen
       ? cardWidth * 0.6
       : handExpanded
       ? cardWidth * (0.5 + overlapFactor * 0.3)
@@ -261,7 +229,7 @@ export default function PlayBot() {
 
   const closeInsightCallback = useCallback(() => {
     setWhotInsightShow(false)
-  }, [whotInsightShow])
+  }, [])
 
   useEffect(() => {
     console.log(gameState?.moveHistory)
@@ -396,8 +364,8 @@ export default function PlayBot() {
                     </ul>
                   </li>
                   <li className="flex items-start">
-                    <span className="text-[#570000] mr-2">•</span>
-                    <span>Draw a card if you can't play any</span>
+                  <span className="text-[#570000] mr-2">•</span>
+                  <span>Draw a card if you can&rsquo;t play any</span>
                   </li>
 
                   <li className="flex items-start">
@@ -436,7 +404,7 @@ export default function PlayBot() {
           <div className="flex-1 flex flex-col p-4 lg:w-2/3 ">
             <div className="mb-8 h-fit">
               <h3 className="text-[#570000] font-bold mb-2 flex items-center">
-                Bot's Cards
+                Bot&rsquo;s Cards
                 {gameState.currentPlayer === 'bot' && (
                   <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
                     Current Turn

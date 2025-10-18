@@ -1,4 +1,12 @@
-import { DurableObject } from 'cloudflare:workers'
+import type {
+  DurableObjectId,
+  DurableObjectNamespace,
+  DurableObjectState,
+} from './durable-object-types'
+
+interface Env {
+  MultiplayerRoomDO: DurableObjectNamespace
+}
 
 interface Player {
   id: string
@@ -64,7 +72,49 @@ interface GameState {
   whotGame?: WhotGameState
 }
 
-export class MultiplayerRoomDO extends DurableObject<Env> {
+interface LeaderboardEntry {
+  playerId: string
+  name: string
+  rating: number
+  wins: number
+  losses: number
+  gamesPlayed: number
+  streak: number
+  lastWin: string | null
+  lastMatch: string
+}
+
+interface LeaderboardPayload {
+  entry: LeaderboardEntry
+}
+
+function isLeaderboardEntry(value: unknown): value is LeaderboardEntry {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.playerId === 'string' &&
+    candidate.playerId.length > 0 &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.rating === 'number' &&
+    Number.isFinite(candidate.rating) &&
+    typeof candidate.wins === 'number' &&
+    typeof candidate.losses === 'number' &&
+    typeof candidate.gamesPlayed === 'number' &&
+    typeof candidate.streak === 'number' &&
+    (typeof candidate.lastWin === 'string' || candidate.lastWin === null) &&
+    typeof candidate.lastMatch === 'string'
+  )
+}
+
+function isLeaderboardPayload(value: unknown): value is LeaderboardPayload {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    isLeaderboardEntry((value as Record<string, unknown>).entry)
+  )
+}
+
+export class MultiplayerRoomDO {
   private readonly DISCONNECT_TIMEOUT = 15 * 60 * 1000 // 15 minutes
   private readonly MAX_WHOT_PLAYERS = 5
   private readonly MIN_WHOT_PLAYERS = 2
@@ -80,30 +130,51 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   }
   private gameStarted: boolean = false
   private whotGame: WhotGameState | null = null
+  private leaderboard: LeaderboardEntry[] = []
+  private env: Env
+  private leaderboardObjectId: DurableObjectId
+  private isGlobalLeaderboard: boolean
+  private isRankedRoom: boolean = false
 
   constructor(state: DurableObjectState, env: Env) {
-    super(state, env)
     this.state = state
+    this.env = env
+    this.leaderboardObjectId = env.MultiplayerRoomDO.idFromName('leaderboard')
+    this.isGlobalLeaderboard =
+      state.id.toString() === this.leaderboardObjectId.toString()
     Promise.all([
       state.storage.get<Player[]>('players'),
       state.storage.get<ChatMessage[]>('chatMessages'),
       state.storage.get<WhotConfig>('gameConfig'),
       state.storage.get<boolean>('gameStarted'),
       state.storage.get<WhotGameState>('whotGame'),
+      state.storage.get<LeaderboardEntry[]>('leaderboard'),
+      state.storage.get<boolean>('isRankedRoom'),
     ])
-      .then(([players, chatMessages, gameConfig, gameStarted, whotGame]) => {
-        this.players = (players || []).map((p) => ({
-          ...p,
-          connected: false,
-          lastSeen: p.lastSeen || Date.now(),
-        }))
-        this.chatMessages = chatMessages || []
-        this.gameConfig = gameConfig || this.gameConfig
-        this.gameStarted = gameStarted || false
-        this.whotGame = whotGame || null
-        this.cleanupDisconnectedPlayers()
-        this.state.storage.setAlarm(Date.now() + 60 * 1000)
-      })
+      .then(
+        ([
+          players,
+          chatMessages,
+          gameConfig,
+          gameStarted,
+          whotGame,
+          leaderboard,
+        ]) => {
+          this.players = (players || []).map((p) => ({
+            ...p,
+            connected: false,
+            lastSeen: p.lastSeen || Date.now(),
+          }))
+          this.chatMessages = chatMessages || []
+          this.gameConfig = gameConfig || this.gameConfig
+          this.gameStarted = gameStarted || false
+          this.whotGame = whotGame || null
+          this.leaderboard = leaderboard || []
+          this.isRankedRoom = Boolean(isRankedRoom)
+          this.cleanupDisconnectedPlayers()
+          this.state.storage.setAlarm(Date.now() + 60 * 1000)
+        }
+      )
       .catch((error) => {
         console.error('Failed to initialize state from storage:', error)
       })
@@ -111,7 +182,34 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
-    const roomId = url.pathname.split('/').pop()!
+    const pathSegments = url.pathname.split('/').filter(Boolean)
+    const lastSegment = pathSegments[pathSegments.length - 1]
+
+    if (lastSegment === 'leaderboard') {
+      if (request.method === 'POST') {
+        try {
+          const payload = (await request.json()) as unknown
+          if (!isLeaderboardPayload(payload)) {
+            return new Response('Invalid payload', { status: 400 })
+          }
+
+          this.integrateLeaderboardEntry({ ...payload.entry })
+          await this.state.storage.put('leaderboard', this.leaderboard)
+
+          return new Response(null, { status: 204 })
+        } catch (error) {
+          console.error('Failed to update leaderboard:', error)
+          return new Response('Failed to update leaderboard', { status: 500 })
+        }
+      }
+
+      return new Response(JSON.stringify({ leaderboard: this.leaderboard }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const roomId = lastSegment!
     const playerId = url.searchParams.get('playerId')!
     const playerName = url.searchParams.get('playerName')
 
@@ -135,7 +233,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
         gameStarted: this.gameStarted,
         whotGame: this.whotGame || undefined,
       }
-      return new Response(JSON.stringify(state), {
+      return new Response(JSON.stringify({ ...state, leaderboard: this.leaderboard }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -144,7 +242,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     return new Response('Method Not Allowed', { status: 405 })
   }
 
-  async webSocketOpen(ws: WebSocket, request: Request) {}
+  async webSocketOpen(_ws: WebSocket, _request: Request) {}
 
   async webSocketMessage(
     ws: WebSocket,
@@ -166,7 +264,10 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       this.wsMap.set(playerId, ws)
     }
 
-    const persistAndBroadcast = async (evt: string, additionalData = {}) => {
+    const persistAndBroadcast = async (
+      evt: string,
+      additionalData: Record<string, unknown> = {}
+    ) => {
       try {
         await Promise.all([
           this.state.storage.put('players', this.players),
@@ -174,6 +275,8 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           this.state.storage.put('gameConfig', this.gameConfig),
           this.state.storage.put('gameStarted', this.gameStarted),
           this.state.storage.put('whotGame', this.whotGame),
+          this.state.storage.put('leaderboard', this.leaderboard),
+          this.state.storage.put('isRankedRoom', this.isRankedRoom),
         ])
         console.log(
           `Persisted state for event ${evt}`,
@@ -193,6 +296,8 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           config: this.gameConfig,
           gameStarted: this.gameStarted,
           whotGame: this.whotGame,
+          leaderboard: this.leaderboard,
+          ranked: this.isRankedRoom,
           ...additionalData,
         })
       } catch (error) {
@@ -201,6 +306,16 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     }
 
     if (type === 'join-room') {
+      if (msg.mode === 'ranked') {
+        if (!this.isRankedRoom) {
+          this.isRankedRoom = true
+          try {
+            await this.state.storage.put('isRankedRoom', this.isRankedRoom)
+          } catch (error) {
+            console.error('Failed to persist ranked status:', error)
+          }
+        }
+      }
       if (!pl) {
         pl = {
           id: playerId,
@@ -347,6 +462,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           config: this.gameConfig,
           gameStarted: this.gameStarted,
           whotGame: this.whotGame,
+          leaderboard: this.leaderboard,
         })
         await this.state.storage.setAlarm(Date.now() + this.DISCONNECT_TIMEOUT)
       }
@@ -400,6 +516,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           config: this.gameConfig,
           gameStarted: this.gameStarted,
           whotGame: this.whotGame,
+          leaderboard: this.leaderboard,
         })
       }
     } catch (error) {
@@ -456,6 +573,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
           config: this.gameConfig,
           gameStarted: this.gameStarted,
           whotGame: this.whotGame,
+          leaderboard: this.leaderboard,
         })
       } catch (error) {
         console.error('Failed to persist players state during cleanup:', error)
@@ -604,10 +722,11 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       this.whotGame.gameStatus = 'finished'
       this.whotGame.winner = playerId
       console.log(this.whotGame.moveHistory)
+      await this.recordWin(playerId)
       return { success: true, gameOver: true, winner: playerId }
     }
 
-    const specialCardPlayed = this.enforceCardProperties(playedCard)
+    this.enforceCardProperties(playedCard)
 
     ///@note when enforcing card properties, the turn is advanced
     /* if (!specialCardPlayed) {
@@ -634,7 +753,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     }
 
     if (this.whotGame.deck.length === 0) {
-      return this.endGameByCardCount()
+      return await this.endGameByCardCount()
     }
 
     const deck = [...this.whotGame.deck]
@@ -673,7 +792,7 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     if (!this.whotGame) return false
 
     const numPlayers = this.whotGame.whotPlayers.length
-    let nextPlayerIndex = (this.whotGame.currentPlayerIndex + 1) % numPlayers
+    const nextPlayerIndex = (this.whotGame.currentPlayerIndex + 1) % numPlayers
 
     if (card.value === 1) {
       this.whotGame.currentPlayerIndex = (nextPlayerIndex + 1) % numPlayers
@@ -737,12 +856,12 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
     return false
   }
 
-  private endGameByCardCount(): {
+  private async endGameByCardCount(): Promise<{
     success: boolean
     message?: string
     gameOver?: boolean
     winner?: string
-  } {
+  }> {
     if (!this.whotGame)
       return { success: false, message: 'Game not in progress' }
 
@@ -769,7 +888,146 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
       timestamp: new Date().toISOString(),
     })
 
+    await this.recordWin(winnerId)
+
     return { success: true, gameOver: true, winner: winnerId }
+  }
+
+  private async recordWin(winnerId: string | undefined) {
+    if (!winnerId || !this.isRankedRoom) return
+
+    if (!this.whotGame || this.whotGame.whotPlayers.length < 2) {
+      return
+    }
+
+    const participants = this.whotGame.whotPlayers
+    const winner = participants.find((p) => p.id === winnerId)
+    if (!winner) return
+
+    const now = new Date().toISOString()
+    const updatedEntries: LeaderboardEntry[] = []
+
+    const winnerEntry = this.ensureLeaderboardEntry(winner.id, winner.name)
+    const K = 24
+    let winnerRating = winnerEntry.rating
+
+    const opponentEntries = participants
+      .filter((p) => p.id !== winnerId)
+      .map((player) => this.ensureLeaderboardEntry(player.id, player.name))
+
+    for (const opponent of opponentEntries) {
+      const expectedWin = 1 / (1 + 10 ** ((opponent.rating - winnerRating) / 400))
+      const expectedLoss = 1 / (1 + 10 ** ((winnerRating - opponent.rating) / 400))
+
+      winnerRating = Math.max(
+        100,
+        Math.round(winnerRating + K * (1 - expectedWin))
+      )
+      opponent.rating = Math.max(
+        100,
+        Math.round(opponent.rating + K * (0 - expectedLoss))
+      )
+      opponent.losses += 1
+      opponent.gamesPlayed += 1
+      opponent.streak = Math.min(0, opponent.streak) - 1
+      opponent.lastMatch = now
+      updatedEntries.push({ ...opponent })
+    }
+
+    winnerEntry.rating = winnerRating
+    winnerEntry.wins += 1
+    winnerEntry.gamesPlayed += 1
+    winnerEntry.streak = Math.max(0, winnerEntry.streak) + 1
+    winnerEntry.lastWin = now
+    winnerEntry.lastMatch = now
+    updatedEntries.push({ ...winnerEntry })
+
+    this.sortLeaderboard()
+
+    try {
+      await this.state.storage.put('leaderboard', this.leaderboard)
+    } catch (error) {
+      console.error('Failed to persist leaderboard:', error)
+    }
+
+    if (!this.isGlobalLeaderboard) {
+      for (const entry of updatedEntries) {
+        await this.forwardLeaderboardEntry(entry)
+      }
+    }
+  }
+
+  private ensureLeaderboardEntry(
+    playerId: string,
+    name: string
+  ): LeaderboardEntry {
+    let existing = this.leaderboard.find((item) => item.playerId === playerId)
+    if (!existing) {
+      existing = {
+        playerId,
+        name,
+        rating: 1200,
+        wins: 0,
+        losses: 0,
+        gamesPlayed: 0,
+        streak: 0,
+        lastWin: null,
+        lastMatch: new Date(0).toISOString(),
+      }
+      this.leaderboard.push(existing)
+    } else {
+      existing.name = name
+    }
+    return existing
+  }
+
+  private integrateLeaderboardEntry(entry: LeaderboardEntry) {
+    const target = this.ensureLeaderboardEntry(entry.playerId, entry.name)
+    Object.assign(target, entry)
+    this.sortLeaderboard()
+  }
+
+  private sortLeaderboard() {
+    this.leaderboard.sort((a, b) => {
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating
+      }
+      if (b.wins !== a.wins) {
+        return b.wins - a.wins
+      }
+      return new Date(b.lastMatch).getTime() - new Date(a.lastMatch).getTime()
+    })
+    if (this.leaderboard.length > 100) {
+      this.leaderboard = this.leaderboard.slice(0, 100)
+    }
+  }
+
+  private async forwardLeaderboardEntry(entry: LeaderboardEntry) {
+    if (this.isGlobalLeaderboard) return
+
+    try {
+      const stub = this.env.MultiplayerRoomDO.get(this.leaderboardObjectId)
+      await stub.fetch('https://leaderboard.internal/room/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry }),
+      })
+
+      const response = await stub.fetch(
+        'https://leaderboard.internal/room/leaderboard'
+      )
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          leaderboard?: LeaderboardEntry[]
+        }
+        if (Array.isArray(payload.leaderboard)) {
+          this.leaderboard = payload.leaderboard
+          await this.state.storage.put('leaderboard', this.leaderboard)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to forward leaderboard entry:', error)
+    }
   }
 
   private isValidMove(card: Card, topCard?: Card): boolean {

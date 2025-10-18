@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import WhotCard, { type CardShape, type CardValue } from './card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -580,7 +580,7 @@ export default function GameBoard() {
         {/* Opponent's cards */}
         <div className="mb-8">
           <h3 className="text-[#570000] font-bold mb-2 flex items-center">
-            {players[1]?.name}'s Cards
+            {players[1]?.name}&apos;s Cards
             {currentPlayerIndex === 1 && (
               <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
                 Current Turn

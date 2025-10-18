@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { XIcon } from 'lucide-react'
+
+interface CreateRoomResponse {
+  roomId: string
+}
 
 export default function RoomHome() {
   const [roomIdInput, setRoomIdInput] = useState('')
@@ -13,16 +16,6 @@ export default function RoomHome() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRouting, setIsRouting] = useState(false)
   const router = useRouter()
-
-  const [isSmallScreen, setIsSmallScreen] = useState(false)
-  useEffect(() => {
-    const handleResize = () => {
-      setIsSmallScreen(window.innerWidth < 768)
-    }
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   useEffect(() => {
     const player_name = localStorage.getItem('playerName')
@@ -47,19 +40,19 @@ export default function RoomHome() {
       })
 
       if (!response.ok) throw new Error('Failed to create room')
-      const { roomId } = (await response.json()) as any
+      const { roomId } = (await response.json()) as CreateRoomResponse
       localStorage.setItem('playerName', playerName)
       setIsRouting(true)
       setTimeout(() => {
         router.push(`/play/room/${roomId}`)
       }, 100)
-    } catch (error) {
+    } catch {
       setError('Failed to create room. Please try again.')
       setIsLoading(false)
     }
   }
 
-  const handleJoinRoom = (e: React.FormEvent) => {
+  const handleJoinRoom = (e: FormEvent) => {
     e.preventDefault()
     if (!playerName.trim()) {
       setError('Please enter your name')

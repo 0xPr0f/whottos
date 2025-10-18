@@ -160,10 +160,6 @@ function CardDeck({
       }
     } else if (spread === 'grid') {
       // Grid layout
-      const cols = Math.min(5, Math.ceil(Math.sqrt(total)))
-      const col = index % cols
-      const row = Math.floor(index / cols)
-
       style = {
         position: 'relative',
         transform: 'none',
@@ -256,12 +252,12 @@ function GameBoard({
   const botCards = useMemo(() => {
     return Array(gameState?.botHandCount || 0).fill({ type: 'whot', value: 20 })
   }, [gameState?.botHandCount])
-  if (!gameState) return
+  if (!gameState) return null
   return (
     <div className="relative w-full h-full bg-[#570000]/20 rounded-lg p-4 flex flex-col">
       {/* Bot's cards */}
       <div className="mb-4">
-        <h3 className="text-white mb-2 font-semibold">Bot's Cards</h3>
+        <h3 className="text-white mb-2 font-semibold">Bot&rsquo;s Cards</h3>
         <CardDeck cards={botCards} faceDown={true} spread="fan" />
       </div>
 
@@ -298,6 +294,9 @@ function GameBoard({
           spread="fan"
           onClick={onPlayCard}
           isPlayable={gameState?.currentPlayer === 'player'}
+          className={cn(
+            isCardBeingPlayed ? 'pointer-events-none opacity-80' : ''
+          )}
         />
       </div>
     </div>
@@ -305,7 +304,7 @@ function GameBoard({
 }
 
 // Game timer component
-function GameTimer({ time, isActive }: { time: number; isActive: boolean }) {
+function GameTimer({ time }: { time: number }) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -526,12 +525,10 @@ function ShapeSelector({
 export default function Game2DPage() {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const [isBotThinking, setIsBotThinking] = useState(false)
   const [showShapeSelector, setShowShapeSelector] = useState(false)
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(
     null
   )
-  const [lastPlayedCard, setLastPlayedCard] = useState<ICard | null>(null)
   const [isCardBeingPlayed, setIsCardBeingPlayed] = useState(false)
   const [gameTime, setGameTime] = useState(600) // 10 minutes in seconds
   const { toast } = useToast()
@@ -553,16 +550,6 @@ export default function Game2DPage() {
 
         if (data.type === 'gameState') {
           setGameState(data.state)
-          setIsBotThinking(data.state.currentPlayer === 'bot')
-
-          // Check for last action to trigger animations
-          if (
-            data.state.lastAction &&
-            data.state.lastAction.action === 'play' &&
-            data.state.lastAction.card
-          ) {
-            setLastPlayedCard(data.state.lastAction.card)
-          }
         } else if (data.type === 'error') {
           console.error('Game error:', data.message)
           toast({
@@ -601,7 +588,6 @@ export default function Game2DPage() {
 
     // Animate card being played
     setIsCardBeingPlayed(true)
-    setLastPlayedCard(card || null)
 
     // Send play action after animation delay
     setTimeout(() => {
@@ -619,11 +605,8 @@ export default function Game2DPage() {
   const selectShape = (shape: string) => {
     if (selectedCardIndex === null) return
 
-    const card = gameState?.playerHand[selectedCardIndex]
-
     // Animate card being played
     setIsCardBeingPlayed(true)
-    setLastPlayedCard(card || null)
 
     // Send play action after animation delay
     setTimeout(() => {
@@ -816,10 +799,7 @@ export default function Game2DPage() {
           <Sidebar>
             <div className="space-y-4">
               {/* Timer */}
-              <GameTimer
-                time={gameTime}
-                isActive={gameState?.gameStatus === 'playing'}
-              />
+              <GameTimer time={gameTime} />
 
               {/* Tabs for different sections */}
               <Tabs defaultValue="game" className="w-full">
