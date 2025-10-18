@@ -89,13 +89,14 @@ interface GameState {
   gameConfig: WhotConfig
   gameStarted: boolean
   whotGame?: WhotGameState
+  ranked?: boolean
 }
 
 export default function GameRoom() {
   const { room } = useParams() ?? { room: '' }
   const roomId = room as string
   const searchParams = useSearchParams()
-  const matchMode = searchParams?.get('mode') === 'online' ? 'online' : 'private'
+  const matchMode = searchParams?.get('mode') === 'ranked' ? 'ranked' : 'private'
   const matchId = searchParams?.get('matchId') || undefined
 
   const [players, setPlayers] = useState<Player[]>([])
@@ -146,7 +147,8 @@ export default function GameRoom() {
   const { isConnected, messages, send } = useWebSocket(
     roomId,
     playerId,
-    playerName
+    playerName,
+    matchMode === 'ranked' ? { mode: 'ranked', matchId } : undefined
   )
 
   useEffect(() => {
@@ -226,7 +228,9 @@ export default function GameRoom() {
     if (isConnected && roomId && playerName && !hasJoined.current) {
       console.log(`Joining room ${roomId} as ${playerName}`)
       const context =
-        matchMode === 'online' ? { mode: 'online' as const, matchId } : undefined
+        matchMode === 'ranked'
+          ? ({ mode: 'ranked' as const, matchId } as const)
+          : undefined
       joinRoom(roomId, playerName, playerId, send, context)
       hasJoined.current = true
     }
@@ -624,7 +628,7 @@ export default function GameRoom() {
                   <span className="text-sm font-medium text-[#570000]">
                     Room: {roomId}
                   </span>
-                  {matchMode === 'online' && (
+                  {matchMode === 'ranked' && (
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#570000]/70">
                       Ranked online match
                     </span>

@@ -1,14 +1,19 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trophy, RefreshCw, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface LeaderboardEntry {
   playerId: string
   name: string
+  rating: number
   wins: number
-  lastWin: string
+  losses: number
+  gamesPlayed: number
+  streak: number
+  lastWin: string | null
+  lastMatch: string
 }
 
 async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
@@ -50,6 +55,13 @@ export default function LeaderboardPage() {
 
   const podium = useMemo(() => entries.slice(0, 3), [entries])
   const others = useMemo(() => entries.slice(3), [entries])
+  const formatLastMatch = useCallback(
+    (entry: LeaderboardEntry) =>
+      entry.gamesPlayed > 0
+        ? new Date(entry.lastMatch).toLocaleString()
+        : 'No ranked matches yet',
+    []
+  )
 
   return (
     <div className="min-h-screen bg-[#FFE2E1] text-[#570000]">
@@ -63,8 +75,8 @@ export default function LeaderboardPage() {
             Whot.gg Global Leaderboard
           </h1>
           <p className="mt-4 text-base text-white/80 md:text-lg">
-            Celebrate the top players from every table. Wins from public rooms update in
-            real time so you can keep an eye on the competition.
+            Celebrate the strongest competitors from ranked online queues. Matches use an
+            Elo-style rating system so every win and loss matters.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button
@@ -102,7 +114,7 @@ export default function LeaderboardPage() {
             <div className="mt-12 grid gap-6 md:grid-cols-3">
               {podium.map((entry, index) => (
                 <div
-                  key={`${entry.playerId}-${entry.lastWin}`}
+                  key={`${entry.playerId}-${entry.lastMatch}`}
                   className="rounded-2xl bg-white p-6 shadow-xl"
                 >
                   <div className="flex items-center justify-between">
@@ -117,13 +129,23 @@ export default function LeaderboardPage() {
                   <p className="mt-2 text-sm text-[#570000]/70">
                     Last win {new Date(entry.lastWin).toLocaleString()}
                   </p>
-                  <div className="mt-6 flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-[#FF9190]">
-                      {entry.wins}
-                    </span>
-                    <span className="text-sm font-semibold uppercase text-[#570000]/70">
-                      wins
-                    </span>
+                  <div className="mt-6 grid gap-2 text-sm text-[#570000]/80">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs uppercase tracking-wide">Rating</span>
+                      <span className="text-3xl font-black text-[#FF9190]">
+                        {Math.round(entry.rating)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Record</span>
+                      <span className="font-semibold text-[#570000]">
+                        {entry.wins}W / {entry.losses}L
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Last match</span>
+                      <span>{formatLastMatch(entry)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -136,21 +158,40 @@ export default function LeaderboardPage() {
                 </div>
                 <ul className="divide-y divide-[#FFA7A6]/40">
                   {others.map((entry, index) => (
-                    <li key={`${entry.playerId}-${entry.lastWin}`} className="flex items-center justify-between px-6 py-4">
-                      <div className="flex items-center gap-4">
+                    <li
+                      key={`${entry.playerId}-${entry.lastMatch}`}
+                      className="grid gap-2 px-6 py-4 text-sm text-[#570000] sm:grid-cols-[auto,1fr,auto] sm:items-center"
+                    >
+                      <div className="flex items-center gap-4 sm:col-span-1">
                         <span className="text-lg font-semibold text-[#570000]">
                           #{index + podium.length + 1}
                         </span>
-                        <div>
+                        <div className="space-y-1">
                           <p className="font-medium text-[#570000]">{entry.name}</p>
                           <p className="text-xs text-[#570000]/70">
-                            Last win {new Date(entry.lastWin).toLocaleString()}
+                            Rating {Math.round(entry.rating)}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-baseline gap-2">
-                        <Trophy className="h-4 w-4 text-[#FF9190]" />
-                        <span className="font-semibold text-[#570000]">{entry.wins}</span>
+                      <div className="flex items-center justify-between sm:col-span-1 sm:justify-end sm:gap-8">
+                        <div className="flex flex-col text-xs uppercase tracking-wide text-[#570000]/70 sm:text-right">
+                          <span>Wins</span>
+                          <span className="text-base font-semibold text-[#570000]">
+                            {entry.wins}
+                          </span>
+                        </div>
+                        <div className="flex flex-col text-xs uppercase tracking-wide text-[#570000]/70 sm:text-right">
+                          <span>Losses</span>
+                          <span className="text-base font-semibold text-[#570000]">
+                            {entry.losses}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-[#570000]/70 sm:col-span-1 sm:justify-end">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-[#FF9190]" />
+                          <span>Last match {formatLastMatch(entry)}</span>
+                        </div>
                       </div>
                     </li>
                   ))}

@@ -75,8 +75,13 @@ interface GameState {
 interface LeaderboardEntry {
   playerId: string
   name: string
+  rating: number
   wins: number
-  lastWin: string
+  losses: number
+  gamesPlayed: number
+  streak: number
+  lastWin: string | null
+  lastMatch: string
 }
 
 interface LeaderboardPayload {
@@ -90,9 +95,14 @@ function isLeaderboardEntry(value: unknown): value is LeaderboardEntry {
     typeof candidate.playerId === 'string' &&
     candidate.playerId.length > 0 &&
     typeof candidate.name === 'string' &&
+    typeof candidate.rating === 'number' &&
+    Number.isFinite(candidate.rating) &&
     typeof candidate.wins === 'number' &&
-    Number.isFinite(candidate.wins) &&
-    typeof candidate.lastWin === 'string'
+    typeof candidate.losses === 'number' &&
+    typeof candidate.gamesPlayed === 'number' &&
+    typeof candidate.streak === 'number' &&
+    (typeof candidate.lastWin === 'string' || candidate.lastWin === null) &&
+    typeof candidate.lastMatch === 'string'
   )
 }
 
@@ -124,6 +134,7 @@ export class MultiplayerRoomDO {
   private env: Env
   private leaderboardObjectId: DurableObjectId
   private isGlobalLeaderboard: boolean
+  private isRankedRoom: boolean = false
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state
@@ -138,6 +149,7 @@ export class MultiplayerRoomDO {
       state.storage.get<boolean>('gameStarted'),
       state.storage.get<WhotGameState>('whotGame'),
       state.storage.get<LeaderboardEntry[]>('leaderboard'),
+      state.storage.get<boolean>('isRankedRoom'),
     ])
       .then(
         ([
@@ -158,6 +170,7 @@ export class MultiplayerRoomDO {
           this.gameStarted = gameStarted || false
           this.whotGame = whotGame || null
           this.leaderboard = leaderboard || []
+          this.isRankedRoom = Boolean(isRankedRoom)
           this.cleanupDisconnectedPlayers()
           this.state.storage.setAlarm(Date.now() + 60 * 1000)
         }
@@ -180,7 +193,7 @@ export class MultiplayerRoomDO {
             return new Response('Invalid payload', { status: 400 })
           }
 
-          this.upsertLeaderboardEntry({ ...payload.entry })
+          this.integrateLeaderboardEntry({ ...payload.entry })
           await this.state.storage.put('leaderboard', this.leaderboard)
 
           return new Response(null, { status: 204 })
@@ -263,6 +276,7 @@ export class MultiplayerRoomDO {
           this.state.storage.put('gameStarted', this.gameStarted),
           this.state.storage.put('whotGame', this.whotGame),
           this.state.storage.put('leaderboard', this.leaderboard),
+          this.state.storage.put('isRankedRoom', this.isRankedRoom),
         ])
         console.log(
           `Persisted state for event ${evt}`,
@@ -283,6 +297,7 @@ export class MultiplayerRoomDO {
           gameStarted: this.gameStarted,
           whotGame: this.whotGame,
           leaderboard: this.leaderboard,
+          ranked: this.isRankedRoom,
           ...additionalData,
         })
       } catch (error) {
@@ -291,6 +306,16 @@ export class MultiplayerRoomDO {
     }
 
     if (type === 'join-room') {
+      if (msg.mode === 'ranked') {
+        if (!this.isRankedRoom) {
+          this.isRankedRoom = true
+          try {
+            await this.state.storage.put('isRankedRoom', this.isRankedRoom)
+          } catch (error) {
+            console.error('Failed to persist ranked status:', error)
+          }
+        }
+      }
       if (!pl) {
         pl = {
           id: playerId,
@@ -869,23 +894,55 @@ export class MultiplayerRoomDO {
   }
 
   private async recordWin(winnerId: string | undefined) {
-    if (!winnerId) return
+    if (!winnerId || !this.isRankedRoom) return
 
-    const player =
-      this.players.find((p) => p.id === winnerId) ||
-      this.whotGame?.whotPlayers.find((p) => p.id === winnerId)
-
-    if (!player) return
-
-    const now = new Date().toISOString()
-    const entry: LeaderboardEntry = {
-      playerId: winnerId,
-      name: player.name,
-      wins: 1,
-      lastWin: now,
+    if (!this.whotGame || this.whotGame.whotPlayers.length < 2) {
+      return
     }
 
-    this.upsertLeaderboardEntry(entry)
+    const participants = this.whotGame.whotPlayers
+    const winner = participants.find((p) => p.id === winnerId)
+    if (!winner) return
+
+    const now = new Date().toISOString()
+    const updatedEntries: LeaderboardEntry[] = []
+
+    const winnerEntry = this.ensureLeaderboardEntry(winner.id, winner.name)
+    const K = 24
+    let winnerRating = winnerEntry.rating
+
+    const opponentEntries = participants
+      .filter((p) => p.id !== winnerId)
+      .map((player) => this.ensureLeaderboardEntry(player.id, player.name))
+
+    for (const opponent of opponentEntries) {
+      const expectedWin = 1 / (1 + 10 ** ((opponent.rating - winnerRating) / 400))
+      const expectedLoss = 1 / (1 + 10 ** ((winnerRating - opponent.rating) / 400))
+
+      winnerRating = Math.max(
+        100,
+        Math.round(winnerRating + K * (1 - expectedWin))
+      )
+      opponent.rating = Math.max(
+        100,
+        Math.round(opponent.rating + K * (0 - expectedLoss))
+      )
+      opponent.losses += 1
+      opponent.gamesPlayed += 1
+      opponent.streak = Math.min(0, opponent.streak) - 1
+      opponent.lastMatch = now
+      updatedEntries.push({ ...opponent })
+    }
+
+    winnerEntry.rating = winnerRating
+    winnerEntry.wins += 1
+    winnerEntry.gamesPlayed += 1
+    winnerEntry.streak = Math.max(0, winnerEntry.streak) + 1
+    winnerEntry.lastWin = now
+    winnerEntry.lastMatch = now
+    updatedEntries.push({ ...winnerEntry })
+
+    this.sortLeaderboard()
 
     try {
       await this.state.storage.put('leaderboard', this.leaderboard)
@@ -894,34 +951,55 @@ export class MultiplayerRoomDO {
     }
 
     if (!this.isGlobalLeaderboard) {
-      await this.forwardLeaderboardEntry(entry)
+      for (const entry of updatedEntries) {
+        await this.forwardLeaderboardEntry(entry)
+      }
     }
   }
 
-  private upsertLeaderboardEntry(entry: LeaderboardEntry): LeaderboardEntry {
-    const existing = this.leaderboard.find(
-      (item) => item.playerId === entry.playerId
-    )
-
-    if (existing) {
-      existing.wins += entry.wins
-      existing.name = entry.name
-      existing.lastWin = entry.lastWin
+  private ensureLeaderboardEntry(
+    playerId: string,
+    name: string
+  ): LeaderboardEntry {
+    let existing = this.leaderboard.find((item) => item.playerId === playerId)
+    if (!existing) {
+      existing = {
+        playerId,
+        name,
+        rating: 1200,
+        wins: 0,
+        losses: 0,
+        gamesPlayed: 0,
+        streak: 0,
+        lastWin: null,
+        lastMatch: new Date(0).toISOString(),
+      }
+      this.leaderboard.push(existing)
     } else {
-      this.leaderboard.push({ ...entry })
+      existing.name = name
     }
+    return existing
+  }
 
+  private integrateLeaderboardEntry(entry: LeaderboardEntry) {
+    const target = this.ensureLeaderboardEntry(entry.playerId, entry.name)
+    Object.assign(target, entry)
+    this.sortLeaderboard()
+  }
+
+  private sortLeaderboard() {
     this.leaderboard.sort((a, b) => {
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating
+      }
       if (b.wins !== a.wins) {
         return b.wins - a.wins
       }
-      return new Date(b.lastWin).getTime() - new Date(a.lastWin).getTime()
+      return new Date(b.lastMatch).getTime() - new Date(a.lastMatch).getTime()
     })
-    if (this.leaderboard.length > 50) {
-      this.leaderboard = this.leaderboard.slice(0, 50)
+    if (this.leaderboard.length > 100) {
+      this.leaderboard = this.leaderboard.slice(0, 100)
     }
-
-    return existing ?? entry
   }
 
   private async forwardLeaderboardEntry(entry: LeaderboardEntry) {

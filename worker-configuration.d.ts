@@ -2,11 +2,12 @@
 // Runtime types generated with workerd@1.20250321.0 2024-03-24 
 declare namespace Cloudflare {
 	interface Env {
-		ANTHROPIC_API_KEY: string;
-		MultiplayerRoomDO: DurableObjectNamespace<import("./src/agent/index").MultiplayerRoomDO>;
-		"whot-game-agent": DurableObjectNamespace<import("./src/agent/index").WhotGameAgent>;
-		AI: Ai;
-	}
+                ANTHROPIC_API_KEY: string;
+                MultiplayerRoomDO: DurableObjectNamespace<import("./src/agent/index").MultiplayerRoomDO>;
+                MatchmakingQueueDO: DurableObjectNamespace<import("./src/agent/index").MatchmakingQueueDO>;
+                "whot-game-agent": DurableObjectNamespace<import("./src/agent/index").WhotGameAgent>;
+                AI: Ai;
+        }
 }
 interface Env extends Cloudflare.Env {}
 

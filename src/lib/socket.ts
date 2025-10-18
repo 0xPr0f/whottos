@@ -4,10 +4,16 @@ import { localWranglerHost, toWebSocketURL } from './utils'
 type WebSocketMessage = Record<string, unknown>
 type OutboundMessage = Record<string, unknown>
 
+interface ConnectionOptions {
+  mode?: 'ranked' | 'casual'
+  matchId?: string | null
+}
+
 export function useWebSocket(
   roomId: string,
   playerId: string,
-  playerName: string
+  playerName: string,
+  options?: ConnectionOptions
 ) {
   const wsRef = useRef<WebSocket | null>(null)
   const [isConnected, setConnected] = useState(false)
@@ -101,7 +107,14 @@ export function useWebSocket(
       clearReconnectTimer()
       startHeartbeat(ws)
       ws.send(
-        JSON.stringify({ type: 'join-room', roomId, playerId, playerName })
+        JSON.stringify({
+          type: 'join-room',
+          roomId,
+          playerId,
+          playerName,
+          mode: options?.mode,
+          matchId: options?.matchId,
+        })
       )
 
       pendingQueue.current.forEach((msg) => {
@@ -163,7 +176,19 @@ export function useWebSocket(
       console.error('WebSocket error:', err)
       ws.close()
     }
-  }, [BASE_RECONNECT_DELAY, MAX_RECONNECT, acknowledgeHeartbeat, clearHeartbeat, clearReconnectTimer, playerId, playerName, roomId, startHeartbeat])
+  }, [
+    BASE_RECONNECT_DELAY,
+    MAX_RECONNECT,
+    acknowledgeHeartbeat,
+    clearHeartbeat,
+    clearReconnectTimer,
+    options?.matchId,
+    options?.mode,
+    playerId,
+    playerName,
+    roomId,
+    startHeartbeat,
+  ])
 
   useEffect(() => {
     connect()
@@ -214,13 +239,26 @@ export function useWebSocket(
   return { isConnected, messages, send }
 }
 
+interface JoinContext {
+  mode?: 'ranked' | 'casual'
+  matchId?: string | null
+}
+
 export const joinRoom = (
   roomId: string,
   playerName: string,
   playerId: string,
-  send: (message: OutboundMessage) => void
+  send: (message: OutboundMessage) => void,
+  context?: JoinContext
 ) => {
-  send({ type: 'join-room', roomId, playerName, playerId })
+  send({
+    type: 'join-room',
+    roomId,
+    playerName,
+    playerId,
+    mode: context?.mode,
+    matchId: context?.matchId,
+  })
 }
 
 export const clickButton = (

@@ -246,19 +246,25 @@ export default function GamePage() {
                 </Link>
                 <div className="flex flex-row items-center gap-2 justify-center">
                   <Button
+                    asChild
                     variant="outline"
                     className="bg-white text-[#570000] border-[#570000] "
                   >
-                    <History className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden xs:inline">Game</span> History
+                    <Link href="/play/history" className="flex items-center">
+                      <History className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden xs:inline">Game</span> History
+                    </Link>
                   </Button>
 
                   <Button
+                    asChild
                     variant="outline"
                     className="bg-white text-[#570000] border-[#570000] "
                   >
-                    <Award className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Leaderboard
+                    <Link href="/leaderboard" className="flex items-center">
+                      <Award className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Leaderboard
+                    </Link>
                   </Button>
                 </div>
               </div>

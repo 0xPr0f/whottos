@@ -1,14 +1,16 @@
 import { AgentNamespace, routeAgentRequest } from 'agents'
 import { WhotGameAgent } from './whot-game-agent'
 import { MultiplayerRoomDO } from './multiplayer-room-DO'
+import { MatchmakingQueueDO } from './matchmaking-DO'
 import type { DurableObjectNamespace } from './durable-object-types'
 
 interface Env {
   MyWhotAgent: AgentNamespace<WhotGameAgent>
   MultiplayerRoomDO: DurableObjectNamespace
+  MatchmakingQueueDO: DurableObjectNamespace
 }
 
-export { WhotGameAgent, MultiplayerRoomDO }
+export { WhotGameAgent, MultiplayerRoomDO, MatchmakingQueueDO }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -27,6 +29,20 @@ export default {
         return await roomObject.fetch(request)
       } catch (e) {
         console.error('Error routing to MultiplayerRoomDO:', e)
+        return new Response('Server error', { status: 500 })
+      }
+    }
+
+    if (path.startsWith('/matchmaking/')) {
+      try {
+        const id = env.MatchmakingQueueDO.idFromName('global-queue')
+        const stub = env.MatchmakingQueueDO.get(id)
+        const targetUrl = new URL(request.url)
+        targetUrl.hostname = 'matchmaking.internal'
+        const forwarded = new Request(targetUrl.toString(), request)
+        return await stub.fetch(forwarded)
+      } catch (error) {
+        console.error('Error routing to MatchmakingQueueDO:', error)
         return new Response('Server error', { status: 500 })
       }
     }
