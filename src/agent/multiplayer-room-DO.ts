@@ -1,6 +1,8 @@
-import { DurableObject, DurableObjectNamespace } from 'cloudflare:workers'
-
-type DurableObjectId = ReturnType<DurableObjectNamespace['idFromName']>
+import type {
+  DurableObjectId,
+  DurableObjectNamespace,
+  DurableObjectState,
+} from './durable-object-types'
 
 interface Env {
   MultiplayerRoomDO: DurableObjectNamespace
@@ -77,7 +79,7 @@ interface LeaderboardEntry {
   lastWin: string
 }
 
-export class MultiplayerRoomDO extends DurableObject<Env> {
+export class MultiplayerRoomDO {
   private readonly DISCONNECT_TIMEOUT = 15 * 60 * 1000 // 15 minutes
   private readonly MAX_WHOT_PLAYERS = 5
   private readonly MIN_WHOT_PLAYERS = 2
@@ -99,7 +101,6 @@ export class MultiplayerRoomDO extends DurableObject<Env> {
   private isGlobalLeaderboard: boolean
 
   constructor(state: DurableObjectState, env: Env) {
-    super(state, env)
     this.state = state
     this.env = env
     this.leaderboardObjectId = env.MultiplayerRoomDO.idFromName('leaderboard')

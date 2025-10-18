@@ -1,6 +1,7 @@
 import { AgentNamespace, routeAgentRequest } from 'agents'
 import { WhotGameAgent } from './whot-game-agent'
 import { MultiplayerRoomDO } from './multiplayer-room-DO'
+import type { DurableObjectNamespace } from './durable-object-types'
 
 interface Env {
   MyWhotAgent: AgentNamespace<WhotGameAgent>
