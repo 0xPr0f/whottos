@@ -2,7 +2,7 @@
 
 import type React from 'react'
 
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -59,7 +59,6 @@ export default function WhotCard({
   className,
   style,
 }: WhotCardProps) {
-  const [isHovered, setIsHovered] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
   const handleClick = () => {
@@ -102,8 +101,6 @@ export default function WhotCard({
       style={style}
       whileHover={isPlayable ? { y: -10, zIndex: 50 } : {}}
       whileTap={isPlayable ? { scale: 0.95 } : {}}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
       onClick={handleClick}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}

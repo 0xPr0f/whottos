@@ -102,7 +102,7 @@ export default function GameSkeleton({
       <div className="flex-1 flex flex-col p-4">
         <div className="mb-8 h-fit">
           <h3 className="text-[#570000] font-bold mb-2 flex items-center">
-            Bot's Cards
+            Bot&rsquo;s Cards
             {gameState.currentPlayer === 'bot' && (
               <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
                 Current Turn

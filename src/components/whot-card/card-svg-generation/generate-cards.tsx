@@ -175,14 +175,15 @@ function generateCrossCard(cardNumber: number) {
   })
 }
 
-function generateWhotCard(cardNumber: number) {
+function generateWhotCard(cardNumber = 20) {
+  const displayNumber = cardNumber || 20
   return generateBaseCard({
-    cardNumber: 20,
+    cardNumber: displayNumber,
     children: (
       <>
         {/* Override default card number display with custom styling */}
         <g style={{ opacity: 0 }}>
-          <CardNumberText cardNumber={20} />
+          <CardNumberText cardNumber={displayNumber} />
           <text
             transform="matrix(1 0 0 1 147.3851 236.655)"
             fill="#791026"
@@ -190,7 +191,7 @@ function generateWhotCard(cardNumber: number) {
             fontSize="24"
             style={{ fontWeight: 'bold' }}
           >
-            20
+            {displayNumber}
           </text>
         </g>
 

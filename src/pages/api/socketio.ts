@@ -1,6 +1,18 @@
 import { Server as SocketIOServer } from 'socket.io'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import type { Socket } from 'socket.io'
+import type { Socket as IOSocket } from 'socket.io'
+import type { Server as HTTPServer } from 'http'
+import type { Socket as NetSocket } from 'net'
+
+type SocketServer = NetSocket & {
+  server: HTTPServer & {
+    io?: SocketIOServer
+  }
+}
+
+type NextApiResponseServerIO = NextApiResponse & {
+  socket: SocketServer
+}
 
 const rooms: {
   [roomId: string]: {
@@ -16,7 +28,9 @@ export default function SocketHandler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if ((res.socket as any).server.io) {
+  const resWithSocket = res as NextApiResponseServerIO
+
+  if (resWithSocket.socket.server.io) {
     console.log('Socket.io already running')
     res.end()
     return
@@ -24,7 +38,7 @@ export default function SocketHandler(
 
   console.log('Setting up Socket.io server')
 
-  const io = new SocketIOServer((res.socket as any).server, {
+  const io = new SocketIOServer(resWithSocket.socket.server, {
     path: '/api/socketio',
     cors: {
       origin: '*',
@@ -32,9 +46,9 @@ export default function SocketHandler(
     },
   })
 
-  ;(res.socket as any).server.io = io
+  resWithSocket.socket.server.io = io
 
-  io.on('connection', (socket: Socket) => {
+  io.on('connection', (socket: IOSocket) => {
     console.log('User connected:', socket.id)
 
     socket.on(

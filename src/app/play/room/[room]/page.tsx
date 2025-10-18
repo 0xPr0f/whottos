@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWebSocket, joinRoom, clickButton } from '@/lib/socket'
@@ -90,29 +89,30 @@ interface GameState {
   gameConfig: WhotConfig
   gameStarted: boolean
   whotGame?: WhotGameState
-  leaderboard?: LeaderboardEntry[]
-}
-
-interface LeaderboardEntry {
-  playerId: string
-  name: string
-  wins: number
-  lastWin: string
 }
 
 export default function GameRoom() {
   const { room } = useParams() ?? { room: '' }
   const roomId = room as string
+  const searchParams = useSearchParams()
+  const matchMode = searchParams?.get('mode') === 'online' ? 'online' : 'private'
+  const matchId = searchParams?.get('matchId') || undefined
 
   const [players, setPlayers] = useState<Player[]>([])
   const [playerName, setPlayerName] = useState(() => {
-    return localStorage.getItem('playerName') || 'John'
+    if (typeof window === 'undefined') {
+      return 'Player'
+    }
+    return window.localStorage.getItem('playerName') || 'Player'
   })
   const [playerId] = useState(() => {
-    const stored = localStorage.getItem('playerId')
+    if (typeof window === 'undefined') {
+      return `player-${Math.random().toString(36).slice(2)}`
+    }
+    const stored = window.localStorage.getItem('playerId')
     if (stored) return stored
     const newId = `player-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    localStorage.setItem('playerId', newId)
+    window.localStorage.setItem('playerId', newId)
     return newId
   })
   const [copied, setCopied] = useState(false)
@@ -128,7 +128,6 @@ export default function GameRoom() {
   })
   const [gameStarted, setGameStarted] = useState(false)
   const [whotGame, setWhotGame] = useState<WhotGameState | null>(null)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   // const chatContainerRef = useRef<HTMLDivElement>(null)
   const lastProcessedIndex = useRef(-1)
   const hasJoined = useRef(false)
@@ -171,7 +170,6 @@ export default function GameRoom() {
         )
         setGameStarted(state.gameStarted || false)
         setWhotGame(state.whotGame || null)
-        setLeaderboard(state.leaderboard || [])
       } catch (error) {
         console.error('Error fetching game state:', error)
         setError('Failed to fetch game state')
@@ -184,7 +182,9 @@ export default function GameRoom() {
   }, [roomId, playerId, playerName])
 
   useEffect(() => {
-    localStorage.setItem('playerName', playerName)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('playerName', playerName)
+    }
   }, [playerName])
 
   useEffect(() => {
@@ -199,7 +199,6 @@ export default function GameRoom() {
           setWhotConfig(data.config || whotConfig)
           setGameStarted(data.gameStarted || false)
           setWhotGame(data.whotGame || null)
-          setLeaderboard(data.leaderboard || [])
           setError(null)
           break
         case 'chat-message':
@@ -207,20 +206,14 @@ export default function GameRoom() {
           break
         case 'game-config':
           setWhotConfig(data.config)
-          setLeaderboard(data.leaderboard || [])
           break
         case 'start-game':
           setGameStarted(true)
           setWhotGame(data.whotGame || null)
-          setLeaderboard(data.leaderboard || [])
           console.log('Game started with config:', whotConfig)
           break
         case 'whot-game-update':
           setWhotGame(data.whotGame || null)
-          setLeaderboard(data.leaderboard || [])
-          break
-        case 'leaderboard-update':
-          setLeaderboard(data.leaderboard || [])
           break
         default:
           console.warn('Unknown message:', data)
@@ -232,16 +225,19 @@ export default function GameRoom() {
   useEffect(() => {
     if (isConnected && roomId && playerName && !hasJoined.current) {
       console.log(`Joining room ${roomId} as ${playerName}`)
-      joinRoom(roomId, playerName, playerId, send)
+      const context =
+        matchMode === 'online' ? { mode: 'online' as const, matchId } : undefined
+      joinRoom(roomId, playerName, playerId, send, context)
       hasJoined.current = true
     }
     if (!isConnected) {
       hasJoined.current = false
     }
-  }, [isConnected, roomId, playerName, playerId, send])
+  }, [isConnected, roomId, playerName, playerId, send, matchMode, matchId])
 
   useEffect(() => {
-    if (!playerHandRef.current) return
+    const element = playerHandRef.current
+    if (!element) return
 
     const updateSizes = () => {
       if (playerHandRef.current) {
@@ -253,13 +249,11 @@ export default function GameRoom() {
     updateSizes()
     window.addEventListener('resize', updateSizes)
     const resizeObserver = new ResizeObserver(updateSizes)
-    resizeObserver.observe(playerHandRef.current)
+    resizeObserver.observe(element)
 
     return () => {
       window.removeEventListener('resize', updateSizes)
-      if (playerHandRef.current) {
-        resizeObserver.unobserve(playerHandRef.current)
-      }
+      resizeObserver.unobserve(element)
     }
   }, [whotGame])
 
@@ -282,7 +276,16 @@ export default function GameRoom() {
         config: whotConfig,
       })
     }
-  }, [players, playerId, isConnected, roomId, send, whotConfig, gameStarted])
+  }, [
+    players,
+    playerId,
+    isConnected,
+    roomId,
+    send,
+    whotConfig,
+    gameStarted,
+    whotGame?.gameStatus,
+  ])
 
   const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || !isConnected) return
@@ -414,7 +417,7 @@ export default function GameRoom() {
     const cardWidth = 70
     const overlapFactor = Math.min(1, 10 / totalCards)
     const mobileAdjust = handWidth < 400 ? 0.5 : handWidth < 600 ? 0.7 : 1
-    let cardVisibleWidth = isSmallScreen
+    const cardVisibleWidth = isSmallScreen
       ? cardWidth * 0.6
       : handExpanded
       ? cardWidth * (0.5 + overlapFactor * 0.3)
@@ -471,7 +474,7 @@ export default function GameRoom() {
 
   const closeInsightCallback = useCallback(() => {
     setWhotInsightShow(false)
-  }, [whotInsightShow])
+  }, [])
 
   const isFirstPlayer = players.length > 0 && players[0].id === playerId
   const isInGame = whotGame?.whotPlayers.some((p) => p.id === playerId)
@@ -615,10 +618,17 @@ export default function GameRoom() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mb-4 flex items-center justify-between bg-[#FFA7A6]/20 p-3 rounded-lg"
+                className="mb-4 flex items-center justify-between rounded-lg bg-[#FFA7A6]/20 p-3"
               >
-                <div className="text-sm truncate text-[#570000] font-medium">
-                  Room: {roomId}
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-[#570000]">
+                    Room: {roomId}
+                  </span>
+                  {matchMode === 'online' && (
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#570000]/70">
+                      Ranked online match
+                    </span>
+                  )}
                 </div>
                 <Button
                   onMouseDown={handleMouseDown}
@@ -711,60 +721,6 @@ export default function GameRoom() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
-                className="mb-8"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-[#570000]">
-                    Global Leaderboard
-                  </h2>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className="text-[#570000] hover:text-[#3D0000]"
-                  >
-                    <Link href="/leaderboard">View all</Link>
-                  </Button>
-                </div>
-                <div className="bg-[#FFA7A6]/20 rounded-lg p-4 space-y-3">
-                  {leaderboard.length === 0 ? (
-                    <p className="text-center text-[#570000]/70">
-                      No completed games yet.
-                    </p>
-                  ) : (
-                    leaderboard.slice(0, 5).map((entry, index) => (
-                      <div
-                        key={`${entry.playerId}-${entry.lastWin}`}
-                        className="flex items-center justify-between rounded-lg bg-white/90 px-3 py-2 shadow-sm"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#570000] font-bold">
-                            #{index + 1}
-                          </span>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-[#570000]">
-                              {entry.name}
-                            </span>
-                            <span className="text-xs text-[#570000]/70">
-                              Last win: {new Date(entry.lastWin).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <Trophy className="h-4 w-4 text-[#570000]" />
-                          <span className="font-bold text-[#570000]">
-                            {entry.wins}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
                 className="flex flex-col sm:flex-row gap-4 mb-6 w-full max-w-2xl mx-auto"
               >
@@ -826,7 +782,7 @@ export default function GameRoom() {
               return (
                 <div key={whotPlayer.id} className="mb-8 h-fit">
                   <h3 className="text-[#570000] font-bold mb-2 flex items-center">
-                    {whotPlayer.name}'s Cards
+                    {whotPlayer.name}&apos;s Cards
                     {whotGame.currentPlayerIndex === playerIndex && (
                       <span className="ml-2 bg-[#570000] text-white text-xs px-2 py-1 rounded-full">
                         Current Turn
