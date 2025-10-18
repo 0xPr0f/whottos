@@ -1,8 +1,6 @@
-import {
-  DurableObject,
-  DurableObjectId,
-  DurableObjectNamespace,
-} from 'cloudflare:workers'
+import { DurableObject, DurableObjectNamespace } from 'cloudflare:workers'
+
+type DurableObjectId = ReturnType<DurableObjectNamespace['idFromName']>
 
 interface Env {
   MultiplayerRoomDO: DurableObjectNamespace
