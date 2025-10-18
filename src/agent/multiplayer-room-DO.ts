@@ -79,6 +79,31 @@ interface LeaderboardEntry {
   lastWin: string
 }
 
+interface LeaderboardPayload {
+  entry: LeaderboardEntry
+}
+
+function isLeaderboardEntry(value: unknown): value is LeaderboardEntry {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.playerId === 'string' &&
+    candidate.playerId.length > 0 &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.wins === 'number' &&
+    Number.isFinite(candidate.wins) &&
+    typeof candidate.lastWin === 'string'
+  )
+}
+
+function isLeaderboardPayload(value: unknown): value is LeaderboardPayload {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    isLeaderboardEntry((value as Record<string, unknown>).entry)
+  )
+}
+
 export class MultiplayerRoomDO {
   private readonly DISCONNECT_TIMEOUT = 15 * 60 * 1000 // 15 minutes
   private readonly MAX_WHOT_PLAYERS = 5
@@ -150,13 +175,12 @@ export class MultiplayerRoomDO {
     if (lastSegment === 'leaderboard') {
       if (request.method === 'POST') {
         try {
-          const payload = await request.json()
-          const entry = payload.entry as LeaderboardEntry | undefined
-          if (!entry || !entry.playerId) {
+          const payload = (await request.json()) as unknown
+          if (!isLeaderboardPayload(payload)) {
             return new Response('Invalid payload', { status: 400 })
           }
 
-          this.upsertLeaderboardEntry({ ...entry })
+          this.upsertLeaderboardEntry({ ...payload.entry })
           await this.state.storage.put('leaderboard', this.leaderboard)
 
           return new Response(null, { status: 204 })
