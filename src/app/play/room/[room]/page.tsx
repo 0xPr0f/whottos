@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -89,6 +90,14 @@ interface GameState {
   gameConfig: WhotConfig
   gameStarted: boolean
   whotGame?: WhotGameState
+  leaderboard?: LeaderboardEntry[]
+}
+
+interface LeaderboardEntry {
+  playerId: string
+  name: string
+  wins: number
+  lastWin: string
 }
 
 export default function GameRoom() {
@@ -119,6 +128,7 @@ export default function GameRoom() {
   })
   const [gameStarted, setGameStarted] = useState(false)
   const [whotGame, setWhotGame] = useState<WhotGameState | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   // const chatContainerRef = useRef<HTMLDivElement>(null)
   const lastProcessedIndex = useRef(-1)
   const hasJoined = useRef(false)
@@ -161,6 +171,7 @@ export default function GameRoom() {
         )
         setGameStarted(state.gameStarted || false)
         setWhotGame(state.whotGame || null)
+        setLeaderboard(state.leaderboard || [])
       } catch (error) {
         console.error('Error fetching game state:', error)
         setError('Failed to fetch game state')
@@ -188,6 +199,7 @@ export default function GameRoom() {
           setWhotConfig(data.config || whotConfig)
           setGameStarted(data.gameStarted || false)
           setWhotGame(data.whotGame || null)
+          setLeaderboard(data.leaderboard || [])
           setError(null)
           break
         case 'chat-message':
@@ -195,14 +207,20 @@ export default function GameRoom() {
           break
         case 'game-config':
           setWhotConfig(data.config)
+          setLeaderboard(data.leaderboard || [])
           break
         case 'start-game':
           setGameStarted(true)
           setWhotGame(data.whotGame || null)
+          setLeaderboard(data.leaderboard || [])
           console.log('Game started with config:', whotConfig)
           break
         case 'whot-game-update':
           setWhotGame(data.whotGame || null)
+          setLeaderboard(data.leaderboard || [])
+          break
+        case 'leaderboard-update':
+          setLeaderboard(data.leaderboard || [])
           break
         default:
           console.warn('Unknown message:', data)
@@ -616,6 +634,17 @@ export default function GameRoom() {
                 </Button>
               </motion.div>
 
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {error}
+                </motion.div>
+              )}
+
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -675,6 +704,60 @@ export default function GameRoom() {
                         </motion.div>
                       ))}
                     </div>
+                  )}
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="mb-8"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-[#570000]">
+                    Global Leaderboard
+                  </h2>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="text-[#570000] hover:text-[#3D0000]"
+                  >
+                    <Link href="/leaderboard">View all</Link>
+                  </Button>
+                </div>
+                <div className="bg-[#FFA7A6]/20 rounded-lg p-4 space-y-3">
+                  {leaderboard.length === 0 ? (
+                    <p className="text-center text-[#570000]/70">
+                      No completed games yet.
+                    </p>
+                  ) : (
+                    leaderboard.slice(0, 5).map((entry, index) => (
+                      <div
+                        key={`${entry.playerId}-${entry.lastWin}`}
+                        className="flex items-center justify-between rounded-lg bg-white/90 px-3 py-2 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#570000] font-bold">
+                            #{index + 1}
+                          </span>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[#570000]">
+                              {entry.name}
+                            </span>
+                            <span className="text-xs text-[#570000]/70">
+                              Last win: {new Date(entry.lastWin).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <Trophy className="h-4 w-4 text-[#570000]" />
+                          <span className="font-bold text-[#570000]">
+                            {entry.wins}
+                          </span>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </motion.div>
