@@ -7,12 +7,7 @@ import { RefreshCw, XIcon, LayoutGrid, ChevronUp, Trophy } from 'lucide-react'
 import { cn, localWranglerHost } from '@/lib/utils'
 import { MovesHistorySidebar } from './helper'
 import { WhotCard } from './helper'
-
-interface Card {
-  type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-  value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
-}
+import type { Card } from '@/types/game'
 
 interface MoveHistoryItem {
   player: 'player' | 'bot'
@@ -139,7 +134,7 @@ export default function PlayBot() {
         JSON.stringify({
           action: 'play_card',
           cardIndex: cardIndex,
-          whotChoosenShape: null,
+          whotChosenShape: null,
         })
       )
     }
@@ -149,12 +144,12 @@ export default function PlayBot() {
     }
   }
 
-  const selectShape = (shape: Card['whotChoosenShape']) => {
+  const selectShape = (shape: Card['whotChosenShape']) => {
     agent.send(
       JSON.stringify({
         action: 'play_card',
         cardIndex: selectedCardIndex,
-        whotChoosenShape: shape,
+        whotChosenShape: shape,
       })
     )
 
@@ -540,15 +535,15 @@ export default function PlayBot() {
                             />
                             {isTopCard &&
                               card.type === 'whot' &&
-                              card.whotChoosenShape && (
+                              card.whotChosenShape && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                   <div className="text-5xl text-[#570000] font-bold rounded-none">
-                                    {card.whotChoosenShape === 'circle' && '●'}
-                                    {card.whotChoosenShape === 'triangle' &&
+                                    {card.whotChosenShape === 'circle' && '●'}
+                                    {card.whotChosenShape === 'triangle' &&
                                       '▲'}
-                                    {card.whotChoosenShape === 'cross' && '✚'}
-                                    {card.whotChoosenShape === 'square' && '■'}
-                                    {card.whotChoosenShape === 'star' && '★'}
+                                    {card.whotChosenShape === 'cross' && '✚'}
+                                    {card.whotChosenShape === 'square' && '■'}
+                                    {card.whotChosenShape === 'star' && '★'}
                                   </div>
                                 </div>
                               )}
@@ -893,18 +888,18 @@ export default function PlayBot() {
 
                   {/* Overlay for chosen shape when card is whot */}
                   {getCurrentCallCard()?.type === 'whot' &&
-                    getCurrentCallCard()?.whotChoosenShape && (
+                    getCurrentCallCard()?.whotChosenShape && (
                       <div className="absolute inset-0 flex items-center z-0 justify-center pointer-events-none">
                         <div className="text-5xl text-[#570000] font-bold">
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'circle' && '●'}
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'triangle' && '▲'}
-                          {getCurrentCallCard()?.whotChoosenShape === 'cross' &&
+                          {getCurrentCallCard()?.whotChosenShape === 'cross' &&
                             '✚'}
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'square' && '■'}
-                          {getCurrentCallCard()?.whotChoosenShape === 'star' &&
+                          {getCurrentCallCard()?.whotChosenShape === 'star' &&
                             '★'}
                         </div>
                       </div>

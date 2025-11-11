@@ -21,16 +21,11 @@ import {
   generateCardBack,
   generateWhotCards,
 } from '@/components/whot-card/card-svg-generation/generate-cards'
-
-interface ICard {
-  type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-  value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
-}
+import type { Card } from '@/types/game'
 
 interface MoveHistoryItem {
   player: 'player' | 'bot' | 'market' | string
-  card?: ICard // Make card optional
+  card?: Card // Make card optional
   timestamp: Date
   action: 'play' | 'draw'
 }
@@ -251,12 +246,12 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
         <span className="mx-1">played</span>
         {getCardIcon(move.card)}
         <span className="ml-1 font-medium">Whot</span>
-        {move.card.whotChoosenShape && (
+        {move.card.whotChosenShape && (
           <>
             <span className="mx-1">|</span>
-            {getShapeIcon(move.card.whotChoosenShape)}
+            {getShapeIcon(move.card.whotChosenShape)}
             <span className="ml-1 capitalize">
-              {move.card.whotChoosenShape}
+              {move.card.whotChosenShape}
             </span>
           </>
         )}
@@ -278,7 +273,7 @@ const MoveDisplay = memo(({ move }: { move: MoveHistoryItem }) => {
   )
 })
 
-function getCardIcon(card: ICard | undefined) {
+function getCardIcon(card: Card | undefined) {
   if (!card) return null
 
   const iconClass = 'text-2xl'
@@ -350,7 +345,7 @@ export const WhotCard = ({
   faceDown,
   className,
 }: {
-  card: ICard
+  card: Card
   faceDown?: boolean
   className?: string
 }) => {

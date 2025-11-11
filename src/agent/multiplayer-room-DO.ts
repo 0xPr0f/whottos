@@ -32,7 +32,7 @@ interface WhotConfig {
 interface Card {
   type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
   value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
+  whotChosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
 }
 
 interface WhotPlayer {
@@ -159,6 +159,7 @@ export class MultiplayerRoomDO {
           gameStarted,
           whotGame,
           leaderboard,
+          isRankedRoom,
         ]) => {
           this.players = (players || []).map((p) => ({
             ...p,
@@ -168,7 +169,7 @@ export class MultiplayerRoomDO {
           this.chatMessages = chatMessages || []
           this.gameConfig = gameConfig || this.gameConfig
           this.gameStarted = gameStarted || false
-          this.whotGame = whotGame || null
+          this.whotGame = whotGame ? this.normalizeWhotGameState(whotGame) : null
           this.leaderboard = leaderboard || []
           this.isRankedRoom = Boolean(isRankedRoom)
           this.cleanupDisconnectedPlayers()
@@ -178,6 +179,38 @@ export class MultiplayerRoomDO {
       .catch((error) => {
         console.error('Failed to initialize state from storage:', error)
       })
+  }
+
+  // Normalize persisted card shape property from legacy "whotChoosenShape"
+  // to the corrected "whotChosenShape" across the entire nested game state.
+  private normalizeWhotGameState(state: WhotGameState): WhotGameState {
+    const mapCard = (c: any): Card => {
+      if (!c || typeof c !== 'object') return c
+      if ('whotChoosenShape' in c && !('whotChosenShape' in c)) {
+        const { whotChoosenShape, ...rest } = c
+        return { ...rest, whotChosenShape: whotChoosenShape ?? null } as Card
+      }
+      return c as Card
+    }
+
+    const mapCards = (arr?: any[]) => (Array.isArray(arr) ? arr.map(mapCard) : arr)
+
+    return {
+      ...state,
+      whotPlayers: (state.whotPlayers || []).map((p) => ({
+        ...p,
+        hand: mapCards(p.hand) as Card[],
+      })),
+      deck: mapCards(state.deck) as Card[],
+      callCardPile: mapCards(state.callCardPile) as Card[],
+      lastAction: state.lastAction
+        ? { ...state.lastAction, card: mapCard(state.lastAction.card) }
+        : state.lastAction,
+      moveHistory: (state.moveHistory || []).map((m) => ({
+        ...m,
+        card: mapCard(m.card),
+      })),
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -233,10 +266,13 @@ export class MultiplayerRoomDO {
         gameStarted: this.gameStarted,
         whotGame: this.whotGame || undefined,
       }
-      return new Response(JSON.stringify({ ...state, leaderboard: this.leaderboard }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return new Response(
+        JSON.stringify({ ...state, leaderboard: this.leaderboard }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     return new Response('Method Not Allowed', { status: 405 })
@@ -266,7 +302,7 @@ export class MultiplayerRoomDO {
 
     const persistAndBroadcast = async (
       evt: string,
-      additionalData: Record<string, unknown> = {}
+      additionalData: object = {}
     ) => {
       try {
         await Promise.all([
@@ -401,7 +437,7 @@ export class MultiplayerRoomDO {
         const result = await this.playerPlayCard(
           playerId,
           msg.cardIndex,
-          msg.whotChoosenShape
+          msg.whotChosenShape
         )
         if (result.success) {
           await persistAndBroadcast('whot-game-update', result)
@@ -644,7 +680,7 @@ export class MultiplayerRoomDO {
   private async playerPlayCard(
     playerId: string,
     cardIndex: number,
-    whotChoosenShape?:
+    whotChosenShape?:
       | 'circle'
       | 'triangle'
       | 'cross'
@@ -683,9 +719,9 @@ export class MultiplayerRoomDO {
 
     if (
       card.value === 20 &&
-      (!whotChoosenShape ||
+      (!whotChosenShape ||
         !['circle', 'triangle', 'cross', 'square', 'star'].includes(
-          whotChoosenShape
+          whotChosenShape
         ))
     ) {
       return {
@@ -697,8 +733,8 @@ export class MultiplayerRoomDO {
     const playerHand = [...currentPlayer.hand]
     const playedCard = playerHand.splice(cardIndex, 1)[0]
 
-    if (playedCard.value === 20 && whotChoosenShape) {
-      playedCard.whotChoosenShape = whotChoosenShape
+    if (playedCard.value === 20 && whotChosenShape) {
+      playedCard.whotChosenShape = whotChosenShape
     }
 
     const moveHistoryItem: MoveHistoryItem = {
@@ -916,8 +952,10 @@ export class MultiplayerRoomDO {
       .map((player) => this.ensureLeaderboardEntry(player.id, player.name))
 
     for (const opponent of opponentEntries) {
-      const expectedWin = 1 / (1 + 10 ** ((opponent.rating - winnerRating) / 400))
-      const expectedLoss = 1 / (1 + 10 ** ((winnerRating - opponent.rating) / 400))
+      const expectedWin =
+        1 / (1 + 10 ** ((opponent.rating - winnerRating) / 400))
+      const expectedLoss =
+        1 / (1 + 10 ** ((winnerRating - opponent.rating) / 400))
 
       winnerRating = Math.max(
         100,
@@ -1050,7 +1088,7 @@ export class MultiplayerRoomDO {
       return true
     }
     if (topCard.value === 20) {
-      return topCard.whotChoosenShape === card.type
+      return topCard.whotChosenShape === card.type
     }
 
     return topCard.type === card.type || topCard.value === card.value
@@ -1060,27 +1098,27 @@ export class MultiplayerRoomDO {
     const deck: Card[] = []
 
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
-      deck.push({ type: 'circle', value, whotChoosenShape: null })
+      deck.push({ type: 'circle', value, whotChosenShape: null })
     }
 
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
-      deck.push({ type: 'triangle', value, whotChoosenShape: null })
+      deck.push({ type: 'triangle', value, whotChosenShape: null })
     }
 
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
-      deck.push({ type: 'cross', value, whotChoosenShape: null })
+      deck.push({ type: 'cross', value, whotChosenShape: null })
     }
 
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
-      deck.push({ type: 'square', value, whotChoosenShape: null })
+      deck.push({ type: 'square', value, whotChosenShape: null })
     }
 
     for (const value of [1, 2, 3, 4, 5, 7, 8]) {
-      deck.push({ type: 'star', value, whotChoosenShape: null })
+      deck.push({ type: 'star', value, whotChosenShape: null })
     }
 
     for (let i = 0; i < 5; i++) {
-      deck.push({ type: 'whot', value: 20, whotChoosenShape: null })
+      deck.push({ type: 'whot', value: 20, whotChosenShape: null })
     }
 
     return deck

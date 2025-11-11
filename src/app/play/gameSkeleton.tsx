@@ -4,12 +4,7 @@ import { ChevronUp, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useRef, useState } from 'react'
 import { WhotCard } from './bot/helper'
-
-interface Card {
-  type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-  value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
-}
+import type { Card } from '@/types/game'
 
 interface GameState {
   gameId: string
@@ -229,14 +224,14 @@ export default function GameSkeleton({
                         />
                         {isTopCard &&
                           card.type === 'whot' &&
-                          card.whotChoosenShape && (
+                          card.whotChosenShape && (
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="text-5xl text-[#570000] font-bold ">
-                                {card.whotChoosenShape === 'circle' && '●'}
-                                {card.whotChoosenShape === 'triangle' && '▲'}
-                                {card.whotChoosenShape === 'cross' && '✚'}
-                                {card.whotChoosenShape === 'square' && '■'}
-                                {card.whotChoosenShape === 'star' && '★'}
+                                {card.whotChosenShape === 'circle' && '●'}
+                                {card.whotChosenShape === 'triangle' && '▲'}
+                                {card.whotChosenShape === 'cross' && '✚'}
+                                {card.whotChosenShape === 'square' && '■'}
+                                {card.whotChosenShape === 'star' && '★'}
                               </div>
                             </div>
                           )}

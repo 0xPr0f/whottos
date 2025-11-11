@@ -1,6 +1,7 @@
 'use client'
 import type React from 'react'
 import { useState, useEffect, useMemo } from 'react'
+import type { Card as WhotCardType } from '@/types/game'
 import { useAgent } from 'agents/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -45,18 +46,12 @@ import GameSkeleton from './gameSkeleton'
 
 // Types
 
-interface ICard {
-  type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-  value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
-}
-
 interface GameState {
   gameId: string
-  deck: ICard[]
-  playerHand: ICard[]
-  botHand: ICard[]
-  callCardPile: ICard[]
+  deck: WhotCardType[]
+  playerHand: WhotCardType[]
+  botHand: WhotCardType[]
+  callCardPile: WhotCardType[]
   currentPlayer: 'player' | 'bot'
   gameStatus: 'waiting' | 'playing' | 'finished'
   botHandCount?: number
@@ -64,7 +59,7 @@ interface GameState {
   lastAction?: {
     player: 'player' | 'bot'
     action: 'play' | 'draw'
-    card?: ICard
+    card?: WhotCardType
   } | null
   moveHistory?: any[]
 }
@@ -83,46 +78,46 @@ export default function GamePage() {
     moveHistory: [],
   })
   const [isBotThinking, setIsBotThinking] = useState(false)
-  const [cards, setCards] = useState<ICard[] | null>()
+  const [cards, setCards] = useState<WhotCardType[] | null>()
   const { toast } = useToast()
 
   const createDeck = () => {
-    const deck: ICard[] = []
+    const deck: WhotCardType[] = []
 
     // Circles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
-      deck.push({ type: 'circle', value, whotChoosenShape: null })
+      deck.push({ type: 'circle', value, whotChosenShape: null })
     }
 
     // Triangles: 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14
     for (const value of [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]) {
-      deck.push({ type: 'triangle', value, whotChoosenShape: null })
+      deck.push({ type: 'triangle', value, whotChosenShape: null })
     }
 
     // Crosses: 1, 2, 3, 5, 7, 10, 11, 13, 14
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
-      deck.push({ type: 'cross', value, whotChoosenShape: null })
+      deck.push({ type: 'cross', value, whotChosenShape: null })
     }
 
     // Squares: 1, 2, 3, 5, 7, 10, 11, 13, 14
     for (const value of [1, 2, 3, 5, 7, 10, 11, 13, 14]) {
-      deck.push({ type: 'square', value, whotChoosenShape: null })
+      deck.push({ type: 'square', value, whotChosenShape: null })
     }
 
     // Stars: 1, 2, 3, 4, 5, 7, 8
     for (const value of [1, 2, 3, 4, 5, 7, 8]) {
-      deck.push({ type: 'star', value, whotChoosenShape: null })
+      deck.push({ type: 'star', value, whotChosenShape: null })
     }
 
     // 5 "Whot" cards numbered 20
     for (let i = 0; i < 5; i++) {
-      deck.push({ type: 'whot', value: 20, whotChoosenShape: null })
+      deck.push({ type: 'whot', value: 20, whotChosenShape: null })
     }
 
     return deck
   }
 
-  const shuffleDeck = (deck: ICard[]) => {
+  const shuffleDeck = (deck: WhotCardType[]) => {
     const shuffled = [...deck]
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))

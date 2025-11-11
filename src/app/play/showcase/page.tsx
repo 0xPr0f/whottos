@@ -614,7 +614,7 @@ export default function Game2DPage() {
         JSON.stringify({
           action: 'play_card',
           cardIndex: selectedCardIndex,
-          whotChoosenShape: shape,
+          whotChosenShape: shape,
         })
       )
       setIsCardBeingPlayed(false)

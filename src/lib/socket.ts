@@ -146,8 +146,14 @@ export function useWebSocket(
       }
     }
 
+    const thisSocket = ws
     ws.onclose = () => {
       console.log('WebSocket closed')
+      // Only the currently active socket may control connection lifecycle.
+      if (wsRef.current !== thisSocket) {
+        // Stale socket closed after a props change; ignore.
+        return
+      }
       setConnected(false)
       wsRef.current = null
       clearHeartbeat()
@@ -191,6 +197,9 @@ export function useWebSocket(
   ])
 
   useEffect(() => {
+    // We are about to intentionally (re)establish a connection due to
+    // dependency changes; allow connect() to proceed.
+    closingRef.current = false
     connect()
     const handleVisibilityChange = () => {
       if (
@@ -205,6 +214,8 @@ export function useWebSocket(
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      // Mark as intentional close so the old socket's onclose doesn't schedule
+      // a reconnect with stale metadata.
       closingRef.current = true
       if (wsRef.current) {
         wsRef.current.close()
@@ -214,6 +225,14 @@ export function useWebSocket(
       setMessages([])
     }
   }, [clearHeartbeat, clearReconnectTimer, connect])
+
+  // Only mark as closing on component unmount, not on effect re-runs.
+  useEffect(() => {
+    closingRef.current = false
+    return () => {
+      closingRef.current = true
+    }
+  }, [])
 
   const send = useCallback(
     (payload: OutboundMessage) => {
@@ -239,27 +258,7 @@ export function useWebSocket(
   return { isConnected, messages, send }
 }
 
-interface JoinContext {
-  mode?: 'ranked' | 'casual'
-  matchId?: string | null
-}
-
-export const joinRoom = (
-  roomId: string,
-  playerName: string,
-  playerId: string,
-  send: (message: OutboundMessage) => void,
-  context?: JoinContext
-) => {
-  send({
-    type: 'join-room',
-    roomId,
-    playerName,
-    playerId,
-    mode: context?.mode,
-    matchId: context?.matchId,
-  })
-}
+// Joining is handled in useWebSocket.onopen using provided options
 
 export const clickButton = (
   roomId: string,

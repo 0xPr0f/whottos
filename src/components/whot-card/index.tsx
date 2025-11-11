@@ -2,19 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import type { Card } from '@/types/game'
 
 type WhotCardProps = {
-  card?: {
-    type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-    value: number
-    whotChoosenShape?:
-      | 'circle'
-      | 'triangle'
-      | 'cross'
-      | 'square'
-      | 'star'
-      | null
-  }
+  card?: Card
   faceDown?: boolean
   className?: string
 }

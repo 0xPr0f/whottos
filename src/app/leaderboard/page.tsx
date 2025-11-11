@@ -22,7 +22,7 @@ async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
     if (!response.ok) {
       throw new Error('Failed to load leaderboard')
     }
-    const data = await response.json()
+    const data = (await response.json()) as { leaderboard?: LeaderboardEntry[] }
     return data.leaderboard ?? []
   } catch (error) {
     console.error('Unable to fetch leaderboard:', error)
@@ -60,6 +60,11 @@ export default function LeaderboardPage() {
       entry.gamesPlayed > 0
         ? new Date(entry.lastMatch).toLocaleString()
         : 'No ranked matches yet',
+    []
+  )
+  const formatLastWin = useCallback(
+    (entry: LeaderboardEntry) =>
+      entry.lastWin ? new Date(entry.lastWin).toLocaleString() : 'No wins yet',
     []
   )
 
@@ -127,7 +132,7 @@ export default function LeaderboardPage() {
                     {entry.name}
                   </h2>
                   <p className="mt-2 text-sm text-[#570000]/70">
-                    Last win {new Date(entry.lastWin).toLocaleString()}
+                    Last win {formatLastWin(entry)}
                   </p>
                   <div className="mt-6 grid gap-2 text-sm text-[#570000]/80">
                     <div className="flex items-baseline justify-between">

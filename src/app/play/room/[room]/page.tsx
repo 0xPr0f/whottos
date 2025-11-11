@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useWebSocket, joinRoom, clickButton } from '@/lib/socket'
+import { useWebSocket, clickButton } from '@/lib/socket'
 import { localWranglerHost } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,71 +26,20 @@ import { cn } from '@/lib/utils'
 import { WhotCard } from '../../bot/helper'
 import { MovesHistorySidebar } from '../../bot/helper'
 import { QRCodeCanvas } from 'qrcode.react'
+import type {
+  Player,
+  ChatMessage,
+  WhotConfig,
+  Card,
+  WhotPlayer,
+  MoveHistoryItem,
+  WhotGameState,
+  GameState,
+} from '@/types/game'
+import type { InboundWebSocketMessage } from '@/types/ws'
+import { isChatMessage } from '@/types/ws'
 
-interface Player {
-  id: string
-  name: string
-  score: number
-  connected: boolean
-  lastSeen?: number
-}
-
-interface ChatMessage {
-  playerId: string
-  playerName: string
-  message: string
-  timestamp: string
-}
-
-interface WhotConfig {
-  pick2: boolean
-  pick3: boolean
-  whotEnabled: boolean
-}
-
-interface Card {
-  type: 'whot' | 'circle' | 'triangle' | 'cross' | 'square' | 'star'
-  value: number
-  whotChoosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
-}
-
-interface WhotPlayer {
-  id: string
-  name: string
-  hand: Card[]
-}
-
-interface MoveHistoryItem {
-  player: 'player' | 'bot' | 'market' | string
-  action: 'play' | 'draw'
-  card?: Card
-  timestamp: Date
-}
-
-interface WhotGameState {
-  whotPlayers: WhotPlayer[]
-  deck: Card[]
-  callCardPile: Card[]
-  currentPlayerIndex: number
-  gameStatus: 'waiting' | 'playing' | 'finished'
-  winner?: string
-  lastAction?: {
-    playerId: string
-    action: 'play' | 'draw'
-    card?: Card
-  }
-  moveHistory: MoveHistoryItem[]
-  gameConfig: WhotConfig
-}
-
-interface GameState {
-  players: Player[]
-  chatMessages: ChatMessage[]
-  gameConfig: WhotConfig
-  gameStarted: boolean
-  whotGame?: WhotGameState
-  ranked?: boolean
-}
+// Types are imported from '@/types/game' and '@/types/ws' to keep TSX clean
 
 export default function GameRoom() {
   const { room } = useParams() ?? { room: '' }
@@ -190,24 +139,30 @@ export default function GameRoom() {
   }, [playerName])
 
   useEffect(() => {
-    const newMessages = messages.slice(lastProcessedIndex.current + 1)
+    const newMessages = messages.slice(
+      lastProcessedIndex.current + 1
+    ) as unknown as InboundWebSocketMessage[]
     newMessages.forEach((data) => {
       switch (data.type) {
         case 'room-update':
         case 'score-update':
         case 'player-left':
           setPlayers(data.players || [])
-          setChatMessages(data.chatMessages || chatMessages)
-          setWhotConfig(data.config || whotConfig)
-          setGameStarted(data.gameStarted || false)
+          setChatMessages((prev) => data.chatMessages ?? prev)
+          setWhotConfig((prev) => (data.config ?? prev))
+          setGameStarted(Boolean(data.gameStarted))
           setWhotGame(data.whotGame || null)
           setError(null)
           break
         case 'chat-message':
-          setChatMessages((prev) => [...prev, data])
+          if (isChatMessage(data)) {
+            setChatMessages((prev) => [...prev, data])
+          }
           break
         case 'game-config':
-          setWhotConfig(data.config)
+          if (data.config) {
+            setWhotConfig(data.config)
+          }
           break
         case 'start-game':
           setGameStarted(true)
@@ -224,20 +179,7 @@ export default function GameRoom() {
     lastProcessedIndex.current = messages.length - 1
   }, [messages, chatMessages, whotConfig])
 
-  useEffect(() => {
-    if (isConnected && roomId && playerName && !hasJoined.current) {
-      console.log(`Joining room ${roomId} as ${playerName}`)
-      const context =
-        matchMode === 'ranked'
-          ? ({ mode: 'ranked' as const, matchId } as const)
-          : undefined
-      joinRoom(roomId, playerName, playerId, send, context)
-      hasJoined.current = true
-    }
-    if (!isConnected) {
-      hasJoined.current = false
-    }
-  }, [isConnected, roomId, playerName, playerId, send, matchMode, matchId])
+  // Join is handled inside useWebSocket on open; avoid duplicate join here
 
   useEffect(() => {
     const element = playerHandRef.current
@@ -380,7 +322,7 @@ export default function GameRoom() {
         roomId,
         playerId,
         cardIndex,
-        whotChoosenShape: null,
+        whotChosenShape: null,
       })
     }
 
@@ -389,14 +331,14 @@ export default function GameRoom() {
     }
   }
 
-  const selectShape = (shape: Card['whotChoosenShape']) => {
+  const selectShape = (shape: Card['whotChosenShape']) => {
     if (selectedCardIndex !== null) {
       send({
         type: 'play-card',
         roomId,
         playerId,
         cardIndex: selectedCardIndex,
-        whotChoosenShape: shape,
+        whotChosenShape: shape,
       })
     }
     setShowShapeSelector(false)
@@ -915,15 +857,15 @@ export default function GameRoom() {
                             />
                             {isTopCard &&
                               card.type === 'whot' &&
-                              card.whotChoosenShape && (
+                          card.whotChosenShape && (
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                   <div className="text-5xl text-[#570000] font-bold rounded-none">
-                                    {card.whotChoosenShape === 'circle' && '●'}
-                                    {card.whotChoosenShape === 'triangle' &&
+                                {card.whotChosenShape === 'circle' && '●'}
+                                {card.whotChosenShape === 'triangle' &&
                                       '▲'}
-                                    {card.whotChoosenShape === 'cross' && '✚'}
-                                    {card.whotChoosenShape === 'square' && '■'}
-                                    {card.whotChoosenShape === 'star' && '★'}
+                                {card.whotChosenShape === 'cross' && '✚'}
+                                {card.whotChosenShape === 'square' && '■'}
+                                {card.whotChosenShape === 'star' && '★'}
                                   </div>
                                 </div>
                               )}
@@ -1298,18 +1240,18 @@ export default function GameRoom() {
                 <div className="mr-4 relative -z-20">
                   <WhotCard card={getCurrentCallCard()!} />
                   {getCurrentCallCard()?.type === 'whot' &&
-                    getCurrentCallCard()?.whotChoosenShape && (
+                    getCurrentCallCard()?.whotChosenShape && (
                       <div className="absolute inset-0 flex items-center z-0 justify-center pointer-events-none">
                         <div className="text-5xl text-[#570000] font-bold">
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'circle' && '●'}
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'triangle' && '▲'}
-                          {getCurrentCallCard()?.whotChoosenShape === 'cross' &&
+                          {getCurrentCallCard()?.whotChosenShape === 'cross' &&
                             '✚'}
-                          {getCurrentCallCard()?.whotChoosenShape ===
+                          {getCurrentCallCard()?.whotChosenShape ===
                             'square' && '■'}
-                          {getCurrentCallCard()?.whotChoosenShape === 'star' &&
+                          {getCurrentCallCard()?.whotChosenShape === 'star' &&
                             '★'}
                         </div>
                       </div>

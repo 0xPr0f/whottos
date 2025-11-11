@@ -13,7 +13,6 @@
     "src/app/structure.tsx",
     "src/app/whot-game/card.tsx",
     "src/app/whot-game/game-board.tsx",
-    "src/components/whot-card/card-svg-generation/generate-cards.tsx",
-    "src/pages/api/socketio.ts"
+    "src/components/whot-card/card-svg-generation/generate-cards.tsx"
   ]
 }
