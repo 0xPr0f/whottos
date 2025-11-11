@@ -173,7 +173,11 @@ export class MultiplayerRoomDO {
           this.leaderboard = leaderboard || []
           this.isRankedRoom = Boolean(isRankedRoom)
           this.cleanupDisconnectedPlayers()
-          this.state.storage.setAlarm(Date.now() + 60 * 1000)
+          // Schedule cleanup only if there are pending disconnected users
+          // to purge; avoid perpetual ticking when idle.
+          this.scheduleNextCleanup().catch((e) =>
+            console.error('Failed to schedule initial cleanup alarm:', e)
+          )
         }
       )
       .catch((error) => {
@@ -475,20 +479,22 @@ export class MultiplayerRoomDO {
     try {
       await this.state.storage.put('players', this.players)
 
-      if (disconnectedPlayerId && this.whotGame) {
-        const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
-          this.players.find((pl) => pl.id === p.id && pl.connected)
-        )
-        if (
-          connectedPlayers.length === 0 &&
-          this.whotGame.gameStatus === 'playing'
-        ) {
-          this.whotGame.gameStatus = 'paused'
-          console.log('Game paused due to no connected players:', {
-            disconnectedPlayerId,
-            timestamp: new Date().toISOString(),
-          })
-          await this.state.storage.put('whotGame', this.whotGame)
+      if (disconnectedPlayerId) {
+        if (this.whotGame) {
+          const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
+            this.players.find((pl) => pl.id === p.id && pl.connected)
+          )
+          if (
+            connectedPlayers.length === 0 &&
+            this.whotGame.gameStatus === 'playing'
+          ) {
+            this.whotGame.gameStatus = 'paused'
+            console.log('Game paused due to no connected players:', {
+              disconnectedPlayerId,
+              timestamp: new Date().toISOString(),
+            })
+            await this.state.storage.put('whotGame', this.whotGame)
+          }
         }
         this.broadcast({
           type: 'player-left',
@@ -500,7 +506,7 @@ export class MultiplayerRoomDO {
           whotGame: this.whotGame,
           leaderboard: this.leaderboard,
         })
-        await this.state.storage.setAlarm(Date.now() + this.DISCONNECT_TIMEOUT)
+        await this.scheduleNextCleanup()
       }
     } catch (error) {
       console.error(
@@ -529,20 +535,22 @@ export class MultiplayerRoomDO {
     try {
       await this.state.storage.put('players', this.players)
 
-      if (disconnectedPlayerId && this.whotGame) {
-        const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
-          this.players.find((pl) => pl.id === p.id && pl.connected)
-        )
-        if (
-          connectedPlayers.length === 0 &&
-          this.whotGame.gameStatus === 'playing'
-        ) {
-          this.whotGame.gameStatus = 'paused'
-          console.log('Game paused due to WebSocket error:', {
-            disconnectedPlayerId,
-            timestamp: new Date().toISOString(),
-          })
-          await this.state.storage.put('whotGame', this.whotGame)
+      if (disconnectedPlayerId) {
+        if (this.whotGame) {
+          const connectedPlayers = this.whotGame.whotPlayers.filter((p) =>
+            this.players.find((pl) => pl.id === p.id && pl.connected)
+          )
+          if (
+            connectedPlayers.length === 0 &&
+            this.whotGame.gameStatus === 'playing'
+          ) {
+            this.whotGame.gameStatus = 'paused'
+            console.log('Game paused due to WebSocket error:', {
+              disconnectedPlayerId,
+              timestamp: new Date().toISOString(),
+            })
+            await this.state.storage.put('whotGame', this.whotGame)
+          }
         }
         this.broadcast({
           type: 'player-left',
@@ -554,6 +562,7 @@ export class MultiplayerRoomDO {
           whotGame: this.whotGame,
           leaderboard: this.leaderboard,
         })
+        await this.scheduleNextCleanup()
       }
     } catch (error) {
       console.error(
@@ -567,9 +576,28 @@ export class MultiplayerRoomDO {
     try {
       await this.state.storage.put('players', this.players)
       this.cleanupDisconnectedPlayers()
-      this.state.storage.setAlarm(Date.now() + 60 * 1000)
+      await this.scheduleNextCleanup()
     } catch (error) {
       console.error('Failed to persist players state during alarm:', error)
+    }
+  }
+
+  // Schedule the next cleanup alarm at the earliest disconnect expiry for any
+  // currently disconnected players. If no such players exist, do not schedule
+  // an alarm to avoid perpetual wake-ups.
+  private async scheduleNextCleanup() {
+    const now = Date.now()
+    let nextTime: number | null = null
+    for (const p of this.players) {
+      if (!p.connected) {
+        const expiry = (p.lastSeen || now) + this.DISCONNECT_TIMEOUT
+        if (expiry > now) {
+          nextTime = nextTime === null ? expiry : Math.min(nextTime, expiry)
+        }
+      }
+    }
+    if (nextTime !== null) {
+      await this.state.storage.setAlarm(nextTime)
     }
   }
 
