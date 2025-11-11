@@ -8,12 +8,20 @@ name = "MultiplayerRoomDO"
 class_name = "MultiplayerRoomDO"
 
 [[durable_objects.bindings]]
-name = "whot-game-agent"
+name = "MyWhotAgent"
 class_name = "WhotGameAgent"
+
+[[durable_objects.bindings]]
+name = "MatchmakingQueueDO"
+class_name = "MatchmakingQueueDO"
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["WhotGameAgent", "MultiplayerRoomDO"]
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["MatchmakingQueueDO"]
+
 
 [ai]
 binding = "AI"

@@ -92,7 +92,7 @@ export default function PlayBot() {
   }, [gameState])
 
   const agent = useAgent({
-    agent: 'whot-game-agent',
+    agent: 'MyWhotAgent',
     name: gameId,
     host: process.env.NEXT_PUBLIC_WHOT_AGENT_HOST ?? localWranglerHost,
     onOpen: () => {
