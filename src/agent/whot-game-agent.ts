@@ -167,13 +167,7 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
 
   async playerPlayCard(
     cardIndex: number,
-    whotChosenShape?:
-      | 'circle'
-      | 'triangle'
-      | 'cross'
-      | 'square'
-      | 'star'
-      | null
+    whotChosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
   ) {
     if (
       this.state.currentPlayer !== 'player' ||
@@ -391,21 +385,71 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
     }
   }
   private async cloudflareHostedBot(gameState: any) {
-    const response = await this.env.AI!.run(
-      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-      {
-        messages: [
-          {
-            role: 'system' as const,
-            content: this.messagePrompt(gameState).system,
+    // Strongly constrain output to a single JSON object decision with no prose
+    const SYSTEM = `
+You are a Whot strategy assistant. Return ONLY a single JSON object with keys:
+{
+  "action": "play" | "draw",
+  "cardIndex": number (required when action is "play"),
+  "whotChosenShape": "circle" | "triangle" | "cross" | "square" | "star" | null,
+  "reasoning": string
+}
+Hard constraints:
+- Only choose a cardIndex present in the provided validMoveIndices list.
+- You may choose "draw" even if valid moves exist IF drawing yields better future flexibility or reduces opponent advantage. If no valid moves, action must be "draw" and omit cardIndex.
+- If playing a Whot (value 20), whotChosenShape is REQUIRED and should be the shape you have most of in your remaining hand unless another shape clearly blocks the opponent.
+- No code fences, no markdown, no extra text—JSON only.
+Strategy guidelines:
+- Prefer plays that preserve flexibility (matching the shape you hold most of), reduce hand size, and avoid giving the opponent advantage.
+- Use Whot to steer to your strongest shape or to block a likely opponent strength.
+`
+
+    const USER = `
+Game snapshot:
+{
+  "topCard": ${JSON.stringify(gameState.topCard)},
+  "botHand": ${JSON.stringify(gameState.botHand)},
+  "playerHandSize": ${JSON.stringify(gameState.playerHandSize)},
+  "deckSize": ${JSON.stringify(gameState.deckSize)},
+  "validMoveIndices": ${JSON.stringify(this.findBotValidMoves())},
+  "validMoves": ${JSON.stringify(gameState.validMoves)},
+  "myShapeCounts": ${JSON.stringify(gameState.myShapeCounts)},
+  "oppLikelyStrongShapes": ${JSON.stringify(gameState.oppLikelyStrongShapes)}
+}
+
+Pick the best action now and output ONLY the decision JSON.
+`
+
+    const response = await this.env.AI!.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system' as const, content: SYSTEM },
+        { role: 'user' as const, content: USER },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['play', 'draw'] },
+            cardIndex: { type: 'integer', minimum: 0 },
+            whotChosenShape: {
+              anyOf: [
+                {
+                  type: 'string',
+                  enum: ['circle', 'triangle', 'cross', 'square', 'star'],
+                },
+                { type: 'null' },
+              ],
+            },
+            reasoning: { type: 'string', minLength: 3, maxLength: 400 },
           },
-          {
-            role: 'user' as const,
-            content: this.messagePrompt(gameState).message,
-          },
-        ],
-      }
-    )
+          required: ['action', 'reasoning'],
+          additionalProperties: false,
+        },
+      },
+      temperature: 0,
+      max_tokens: 500,
+    })
     return response
   }
   private async anthropicAIBotMove(gameState: any) {
@@ -433,35 +477,36 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
         playerHandSize: this.state.playerHand.length,
         deckSize: this.state.deck.length,
         validMoves: this.findBotValidMoves().map((i) => this.state.botHand[i]),
+        myShapeCounts: this.countShapes(this.state.botHand),
+        oppLikelyStrongShapes: this.inferOpponentStrongShapes(),
       }
+      console.log('Audit Game state for AI Bot Move', { gameState })
       const response = await this.cloudflareHostedBot(gameState)
+      const payload = (response as any).response
+      // Capture raw payload for diagnostics; keep string as-is, else serialize
+      content = typeof payload === 'string' ? payload : JSON.stringify(payload)
+      const raw =
+        typeof payload === 'string' ? this.extractJSONObject(payload) : payload
+      const strategy = this.validateStrategy(raw, this.findBotValidMoves())
+      console.log('makeBotMoveWithAI', {
+        topCard: gameState.topCard,
+        botHand: this.state.botHand,
+        validMoves: this.findBotValidMoves(),
+        strategy,
+      })
+      // Respect model's choice to draw even if valid moves exist. Do not override to play.
 
-      content = JSON.stringify((response as any).response)
-      console.log(content)
-      let strategy
-
-      if (content.startsWith('```json')) {
-        content = content.replace(/```json\n/, '').replace(/\n```$/, '')
-      } else if (content.startsWith('```')) {
-        content = content.replace(/```\n/, '').replace(/\n```$/, '')
-      }
-
-      const strat_parse = JSON.parse(content)
-      strategy = strat_parse
-
-      console.log(
-        'makeBotMoveWithAI',
-        `Top Pile Card: ${JSON.stringify(gameState.topCard, null, 2)}`,
-        `Bot Hand: ${JSON.stringify(this.state.botHand, null, 2)}`,
-        `Bot Moves: [${this.findBotValidMoves()}]`,
-        strategy
-      )
       if (strategy.action === 'play' && strategy.cardIndex !== undefined) {
         const botHand = [...this.state.botHand]
         const playedCard = botHand.splice(strategy.cardIndex, 1)[0]
 
         if (playedCard.type === 'whot') {
-          playedCard.whotChosenShape = strategy.whotChosenShape
+          playedCard.whotChosenShape =
+            strategy.whotChosenShape ||
+            this.chooseWhotShape(
+              this.countShapes(botHand),
+              this.inferOpponentStrongShapes()
+            )
         }
         if (!this.isValidMove(playedCard)) {
           throw new Error('Card Played is not valid move')
@@ -520,9 +565,147 @@ export class WhotGameAgent extends Agent<Env, WhotGameState> {
       }
     } catch (error) {
       console.error('AI strategy failed:', error)
-      console.log(JSON.parse(content))
       throw new Error('Failed to play AI move', error as any)
     }
+  }
+
+  private extractJSONObject(text: string) {
+    if (!text) return {}
+    let t = text.trim()
+    if (t.startsWith('```')) {
+      t = t.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '')
+    }
+    try {
+      return JSON.parse(t)
+    } catch {}
+    const start = t.indexOf('{')
+    const end = t.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      const slice = t.slice(start, end + 1)
+      try {
+        return JSON.parse(slice)
+      } catch {}
+    }
+    return {}
+  }
+
+  private countShapes(cards: Card[]) {
+    const counts: Record<
+      'circle' | 'triangle' | 'cross' | 'square' | 'star',
+      number
+    > = {
+      circle: 0,
+      triangle: 0,
+      cross: 0,
+      square: 0,
+      star: 0,
+    }
+    for (const c of cards) {
+      if (c.type !== 'whot') counts[c.type]++
+    }
+    return counts
+  }
+
+  private inferOpponentStrongShapes(): Array<
+    'circle' | 'triangle' | 'cross' | 'square' | 'star'
+  > {
+    const counts: Record<
+      'circle' | 'triangle' | 'cross' | 'square' | 'star',
+      number
+    > = {
+      circle: 0,
+      triangle: 0,
+      cross: 0,
+      square: 0,
+      star: 0,
+    }
+    const recent = [...this.state.moveHistory].slice(-8)
+    for (const m of recent) {
+      if (m?.player === 'player' && m?.action === 'play' && m.card) {
+        const c = m.card
+        if (c.type === 'whot') {
+          if (c.whotChosenShape && c.whotChosenShape !== null) {
+            counts[c.whotChosenShape]++
+          }
+        } else {
+          counts[c.type]++
+        }
+      }
+    }
+    // Only include shapes we've observed the opponent play; rank by frequency
+    const sorted = Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k]) => k as any)
+    return sorted as any
+  }
+
+  private chooseWhotShape(
+    myCounts: Record<
+      'circle' | 'triangle' | 'cross' | 'square' | 'star',
+      number
+    >,
+    oppStrong: Array<'circle' | 'triangle' | 'cross' | 'square' | 'star'>
+  ): 'circle' | 'triangle' | 'cross' | 'square' | 'star' {
+    const shapes: Array<'circle' | 'triangle' | 'cross' | 'square' | 'star'> = [
+      'circle',
+      'triangle',
+      'cross',
+      'square',
+      'star',
+    ]
+
+    let best: any = 'circle'
+    let bestScore = -Infinity
+    for (const s of shapes) {
+      const our = myCounts[s] || 0
+      // Scale penalty by opponent strength rank (top shape = 2, second = 1)
+      const idx = oppStrong.indexOf(s)
+      const oppPenalty = idx === 0 ? 2 : idx === 1 ? 1 : 0
+      const score = our * 2 - oppPenalty
+      if (score > bestScore) {
+        bestScore = score
+        best = s
+      }
+    }
+    return best
+  }
+
+  private validateStrategy(
+    obj: any,
+    validMoveIdxs: number[]
+  ): {
+    action: 'play' | 'draw'
+    cardIndex?: number
+    whotChosenShape?: 'circle' | 'triangle' | 'cross' | 'square' | 'star' | null
+    reasoning?: string
+  } {
+    const allowedShapes = new Set([
+      'circle',
+      'triangle',
+      'cross',
+      'square',
+      'star',
+    ])
+    const res: any = { action: 'draw', whotChosenShape: null, reasoning: '' }
+    if (!obj || typeof obj !== 'object') return res
+    const action = obj.action === 'play' ? 'play' : 'draw'
+    res.action = action
+    if (action === 'play') {
+      const idx = Number(obj.cardIndex)
+      if (Number.isInteger(idx) && validMoveIdxs.includes(idx)) {
+        res.cardIndex = idx
+      } else {
+        res.action = 'draw'
+      }
+    }
+    if (obj.whotChosenShape && allowedShapes.has(String(obj.whotChosenShape))) {
+      res.whotChosenShape = obj.whotChosenShape
+    }
+    if (obj.reasoning && typeof obj.reasoning === 'string') {
+      res.reasoning = obj.reasoning
+    }
+    return res
   }
 
   private findBotValidMoves() {
