@@ -120,3 +120,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide scrollbars for elements with .no-scrollbar, but still allow scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;            /* Chrome/Safari */
+}

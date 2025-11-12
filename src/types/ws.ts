@@ -8,6 +8,7 @@ import type {
 
 export type InboundMessageType =
   | 'room-update'
+  | 'pong'
   | 'score-update'
   | 'player-left'
   | 'chat-message'

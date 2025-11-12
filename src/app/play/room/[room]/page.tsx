@@ -172,8 +172,12 @@ export default function GameRoom() {
         case 'whot-game-update':
           setWhotGame(data.whotGame || null)
           break
+        case 'pong':
+          // Heartbeat; no-op
+          break
         default:
-          console.warn('Unknown message:', data)
+          // Ignore unknown control messages to keep console clean
+          break
       }
     })
     lastProcessedIndex.current = messages.length - 1

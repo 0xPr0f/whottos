@@ -135,9 +135,8 @@ export function useWebSocket(
           const data = parsed as WebSocketMessage
           setMessages((prev) => [...prev, data])
           acknowledgeHeartbeat()
-          if ((data as { type?: unknown }).type === 'pong') {
-            console.log('Received pong')
-          }
+          // Quietly acknowledge heartbeats without logging noise
+          // if ((data as { type?: unknown }).type === 'pong') {}
         } else {
           console.warn('Received non-object message from WS:', parsed)
         }

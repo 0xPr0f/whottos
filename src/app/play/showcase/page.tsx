@@ -537,7 +537,7 @@ export default function Game2DPage() {
   const gameId = 'game-123'
 
   const agent = useAgent({
-    agent: 'MyWhotAgent',
+    agent: 'whot-game-agent',
     name: gameId,
     host: 'http://localhost:8787',
     onOpen: () => {

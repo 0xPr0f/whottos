@@ -149,7 +149,7 @@ export default function WhotNavbar({
   if (!isMounted) return null
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen">
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-20 hidden md:flex flex-col bg-[#570000] text-white',
@@ -285,7 +285,7 @@ export default function WhotNavbar({
 
       <div
         className={cn(
-          'flex flex-col w-full bg-[#FFA7A6]',
+          'flex flex-col w-full bg-[#FFA7A6] min-h-screen overflow-y-auto',
           !isMobile && !isSidebarCollapsed && 'md:ml-[170px]',
           !isMobile && isSidebarCollapsed && 'md:ml-16'
         )}

@@ -52,47 +52,49 @@ export default function Home() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-md mt-20">
+    <div className="min-h-screen bg-[#FFE2E1] text-[#570000] px-4 py-10 flex items-start justify-center">
       <Head>
-        <title>Click Battle - Multiplayer Game</title>
+        <title>Whot Puzzles</title>
       </Head>
 
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">Click Battle</h1>
+      <div className="w-full max-w-lg rounded-2xl bg-white/90 shadow-xl border border-[#FFB6B3] p-6">
+        <h1 className="text-2xl sm:text-3xl font-black mb-6 text-center">
+          Whot Puzzles
+        </h1>
 
-        <div className="mb-4">
-          <label className="block mb-2">Your Name</label>
+        <div className="mb-5">
+          <label className="block mb-2 text-sm font-semibold">Your Name</label>
           <input
             type="text"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full rounded-xl border border-[#FFB6B3] bg-white px-4 py-3 text-[#570000] placeholder-[#570000]/50 focus:outline-none focus:ring-2 focus:ring-[#FF9190]/40"
             placeholder="Enter your name"
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-8">
           <button
             onClick={handleCreateRoom}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full rounded-xl bg-[#570000] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#3D0000]"
           >
             Create New Game
           </button>
         </div>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold mb-4">Join Existing Game</h2>
+        <div className="border-t border-[#FFB6B3]/60 pt-6">
+          <h2 className="text-lg font-bold mb-4">Join Existing Game</h2>
           <form onSubmit={handleJoinRoom}>
             <input
               type="text"
               value={roomIdInput}
               onChange={(e) => setRoomIdInput(e.target.value)}
               placeholder="Enter room ID"
-              className="w-full p-2 mb-4 border rounded"
+              className="w-full rounded-xl border border-[#FFB6B3] bg-white px-4 py-3 text-[#570000] placeholder-[#570000]/50 focus:outline-none focus:ring-2 focus:ring-[#FF9190]/40 mb-4"
             />
             <button
               type="submit"
-              className="w-full py-2 px-4 bg-green-600 text-white rounded hover:bg-green-700"
+              className="w-full rounded-xl bg-[#FFA7A6] px-4 py-3 font-semibold text-[#570000] transition-colors hover:bg-[#FF8A89]"
             >
               Join Game
             </button>
@@ -100,7 +102,7 @@ export default function Home() {
         </div>
 
         {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
