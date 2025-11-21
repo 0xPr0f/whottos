@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useTheme } from '@/hooks/use-theme'
 
 const navItems = [
   {
@@ -80,6 +81,7 @@ export default function WhotNavbar({
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const isMobile = useMediaQuery('(max-width: 768px)')
+  const { theme, setTheme, themes } = useTheme()
 
   useEffect(() => {
     setIsMounted(true)
@@ -112,10 +114,6 @@ export default function WhotNavbar({
     },
   ]
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log('Searching for:', searchQuery)
-  }
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   const handleNavClick = () => {
@@ -149,10 +147,10 @@ export default function WhotNavbar({
   if (!isMounted) return null
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-20 hidden md:flex flex-col bg-[#570000] text-white',
+          'fixed inset-y-0 left-0 z-20 hidden md:flex flex-col bg-sidebar text-sidebar-foreground',
           isSidebarCollapsed ? 'w-16' : 'w-[170px]'
         )}
       >
@@ -185,14 +183,14 @@ export default function WhotNavbar({
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center rounded-md px-3 py-2 text-sm group relative overflow-hidden',
+                    'flex items-center rounded-md px-3 py-2 text-sm group relative overflow-hidden text-sidebar-foreground',
                     isSidebarCollapsed
                       ? 'justify-center'
                       : 'justify-start gap-3',
-                    'hover:bg-[#3D0000]'
+                    'hover:bg-sidebar-accent/70'
                   )}
                 >
-                  <span className="absolute inset-0 bg-[#3D0000] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
+                  <span className="absolute inset-0 bg-sidebar-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
                   <span className="flex-shrink-0 relative z-10 transition-transform duration-300 group-hover:rotate-12">
                     {item.icon}
                   </span>
@@ -242,7 +240,7 @@ export default function WhotNavbar({
           </Button>
         </div>
 */}
-        <div className="mt-auto border-t border-[#3D0000] p-2">
+        <div className="mt-auto border-t border-sidebar-border p-2">
           <ul className="space-y-1">
             {bottomNavItems.map((item) => (
               <li key={item.name}>
@@ -252,7 +250,7 @@ export default function WhotNavbar({
                       variant="ghost"
                       className={cn(
                         'cursor-pointer',
-                        'w-full text-white/80 hover:bg-[#3D0000] hover:text-white group relative overflow-hidden',
+                        'w-full text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group relative overflow-hidden',
                         isSidebarCollapsed
                           ? 'justify-center px-0 py-0'
                           : 'justify-start px-3 py-2'
@@ -267,7 +265,7 @@ export default function WhotNavbar({
                     variant="ghost"
                     className={cn(
                       'cursor-pointer',
-                      'w-full text-white/80 hover:bg-[#3D0000] hover:text-white group relative overflow-hidden',
+                      'w-full text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group relative overflow-hidden',
                       isSidebarCollapsed
                         ? 'justify-center px-0 py-0'
                         : 'justify-start px-3 py-2'
@@ -285,18 +283,18 @@ export default function WhotNavbar({
 
       <div
         className={cn(
-          'flex flex-col w-full bg-[#FFA7A6] min-h-screen overflow-y-auto',
+          'flex flex-col w-full bg-background min-h-screen overflow-y-auto',
           !isMobile && !isSidebarCollapsed && 'md:ml-[170px]',
           !isMobile && isSidebarCollapsed && 'md:ml-16'
         )}
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between bg-[#570000] p-4 text-white md:hidden">
+        <header className="sticky top-0 z-10 flex items-center justify-between bg-primary p-4 text-primary-foreground md:hidden">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-[#3D0000] hover:text-white transition-transform duration-300 hover:scale-110"
+                className="text-primary-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-transform duration-300 hover:scale-110"
               >
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Open menu</span>
@@ -304,17 +302,17 @@ export default function WhotNavbar({
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[170px] p-0 bg-[#570000] border-[#3D0000]"
+              className="w-[170px] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border"
               aria-describedby="mobile:navigation-description"
             >
               <SheetHeader className="p-4 flex flex-row items-center h-16 justify-between">
-                <SheetTitle className="text-white">
+                <SheetTitle className="text-sidebar-foreground">
                   <Link
                     href="/"
                     className="flex items-center gap-2 text-lg font-bold group"
                     onClick={handleNavClick}
                   >
-                    <WhotLogo className="h-6 w-6 text-white transition-transform duration-300 group-hover:rotate-12" />
+                    <WhotLogo className="h-6 w-6 text-sidebar-foreground transition-transform duration-300 group-hover:rotate-12" />
                     <span>Whot.gg</span>
                   </Link>
                 </SheetTitle>
@@ -328,9 +326,9 @@ export default function WhotNavbar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full hover:bg-[#3D0000] h-8 w-8 p-0 transition-transform duration-300 hover:scale-110"
+                    className="rounded-full hover:bg-sidebar-accent h-8 w-8 p-0 transition-transform duration-300 hover:scale-110"
                   >
-                    <X className="h-5 w-5 text-white/70" />
+                    <X className="h-5 w-5 text-sidebar-foreground/70" />
                     <span className="sr-only">Close</span>
                   </Button>
                 </SheetClose>
@@ -347,16 +345,13 @@ export default function WhotNavbar({
                         )}
                         onClick={handleNavClick}
                       >
-                        <span className="absolute inset-0 bg-[#3D0000] opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"></span>
-                        <span className="text-white flex-shrink-0 relative z-10 transition-transform duration-300 ease-in-out group-hover:scale-110 group-hover:rotate-12">
+                        <span className="absolute inset-0 bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"></span>
+                        <span className="text-sidebar-foreground flex-shrink-0 relative z-10 transition-transform duration-300 ease-in-out group-hover:scale-110 group-hover:rotate-12">
                           {item.icon}
                         </span>
                         <span
                           className={cn(
                             'transition-all duration-500 ease-in-out overflow-hidden whitespace-nowrap relative z-10',
-                            isSidebarCollapsed
-                              ? 'w-0 opacity-0'
-                              : 'w-auto opacity-100',
                             item.textColor,
                             'group-hover:font-medium'
                           )}
@@ -392,19 +387,19 @@ export default function WhotNavbar({
                 </Button>
               </div>*/}
 
-              <div className="mt-auto border-t border-[#3D0000] p-2">
+              <div className="mt-auto border-t border-sidebar-border p-2">
                 <ul className="space-y-1">
                   {bottomNavItems.slice(1).map((item) => (
                     <li key={item.name}>
                       <Button
                         variant="ghost"
-                        className="w-full cursor-pointer justify-start text-white/70 hover:bg-[#3D0000] hover:text-white group relative overflow-hidden px-3 py-2"
+                        className="w-full cursor-pointer justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group relative overflow-hidden px-3 py-2"
                         onClick={() => {
                           item.onClick?.()
                           handleNavClick()
                         }}
                       >
-                        <span className="absolute inset-0 bg-[#3D0000] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
+                        <span className="absolute inset-0 bg-sidebar-accent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></span>
                         <span className="relative z-10 transition-transform duration-300 group-hover:rotate-12">
                           {item.icon}
                         </span>

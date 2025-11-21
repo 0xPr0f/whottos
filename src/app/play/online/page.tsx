@@ -205,30 +205,33 @@ export default function OnlinePlayPage() {
   const waitSeconds = queueMeta?.waitSeconds ?? null
 
   return (
-    <div className="min-h-screen bg-[#FFE2E1] px-4 py-10 text-[#570000]">
+    <div className="min-h-full bg-background px-4 py-10 text-foreground">
       <div className="mx-auto flex max-w-5xl flex-col gap-8">
-        <header className="rounded-3xl bg-[#570000] px-8 py-12 text-white shadow-xl">
+        <header className="rounded-3xl bg-primary px-8 py-12 text-primary-foreground shadow-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs uppercase tracking-wide">
+              <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/10 px-4 py-2 text-xs uppercase tracking-wide">
                 <Sword className="h-4 w-4" /> Ranked Online
               </p>
               <h1 className="mt-4 text-3xl font-black md:text-4xl">
                 Queue for Competitive Whot
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/80 md:text-base">
+              <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 md:text-base">
                 Enter the ranked ladder to face players across the world. Our Elo-style
                 rating rewards consistent play and keeps matches fair.
               </p>
             </div>
-            <Link href="/leaderboard" className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
+            <Link
+              href="/leaderboard"
+              className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm hover:bg-primary-foreground/20"
+            >
               <Trophy className="h-4 w-4" /> View full leaderboard
             </Link>
           </div>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-          <Card className="border-[#FFB6B3] bg-white/90 shadow-lg">
+          <Card className="border border-border bg-card/90 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Users className="h-6 w-6" /> Ranked Matchmaking
@@ -245,13 +248,13 @@ export default function OnlinePlayPage() {
                   value={playerName}
                   onChange={(event) => setPlayerName(event.target.value)}
                   placeholder="Your in-game name"
-                  className="w-full rounded-xl border border-[#FFB6B3] bg-white px-4 py-3 text-base text-[#570000] focus:border-[#FF9190] focus:outline-none focus:ring-2 focus:ring-[#FF9190]/40"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
                   disabled={queueStatus === 'queued' || isSubmitting}
                 />
               </div>
 
               {error && (
-                <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700">
+                <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   <XCircle className="h-4 w-4" />
                   <span>{error}</span>
                 </div>
@@ -261,14 +264,14 @@ export default function OnlinePlayPage() {
                 <Button
                   onClick={queueStatus === 'queued' ? leaveQueue : joinQueue}
                   disabled={isSubmitting || !playerId}
-                  className="flex-1 bg-[#570000] text-white hover:bg-[#570000]/90"
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {queueStatus === 'queued' ? 'Leave queue' : 'Join ranked queue'}
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 border-[#570000] text-[#570000] hover:bg-[#570000]/10"
+                  className="flex-1 border-primary text-primary hover:bg-primary/10"
                   onClick={() => fetchLeaderboardPreview().then(setLeaderboard)}
                   disabled={isSubmitting}
                 >
@@ -277,30 +280,30 @@ export default function OnlinePlayPage() {
               </div>
 
               {queueStatus === 'queued' && (
-                <div className="rounded-2xl border border-[#FFB6B3] bg-white/70 px-4 py-5">
-                  <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wide text-[#570000]/70">
+                <div className="rounded-2xl border border-border bg-card/70 px-4 py-5">
+                  <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wide text-foreground/70">
                     <ShieldCheck className="h-4 w-4" /> Searching for opponents…
                   </div>
-                  <div className="mt-4 grid gap-3 text-sm text-[#570000] sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 text-sm text-foreground sm:grid-cols-2">
                     {queuePosition && (
-                      <div className="flex flex-col rounded-xl bg-[#FFEBEB] px-4 py-3">
-                        <span className="text-xs uppercase text-[#570000]/70">
+                      <div className="flex flex-col rounded-xl bg-secondary px-4 py-3">
+                        <span className="text-xs uppercase text-foreground/70">
                           Queue position
                         </span>
                         <span className="text-lg font-bold">{queuePosition}</span>
                       </div>
                     )}
                     {totalPlayers && (
-                      <div className="flex flex-col rounded-xl bg-[#FFEBEB] px-4 py-3">
-                        <span className="text-xs uppercase text-[#570000]/70">
+                      <div className="flex flex-col rounded-xl bg-secondary px-4 py-3">
+                        <span className="text-xs uppercase text-foreground/70">
                           Players searching
                         </span>
                         <span className="text-lg font-bold">{totalPlayers}</span>
                       </div>
                     )}
                     {waitSeconds !== null && waitSeconds !== undefined && (
-                      <div className="flex flex-col rounded-xl bg-[#FFEBEB] px-4 py-3">
-                        <span className="text-xs uppercase text-[#570000]/70">
+                      <div className="flex flex-col rounded-xl bg-secondary px-4 py-3">
+                        <span className="text-xs uppercase text-foreground/70">
                           Time waiting
                         </span>
                         <span className="flex items-center gap-2 text-lg font-bold">
@@ -311,8 +314,8 @@ export default function OnlinePlayPage() {
                   </div>
 
                   {opponents.length > 0 && (
-                    <div className="mt-4 rounded-xl bg-[#FFF5F5] px-4 py-3 text-sm">
-                      <p className="font-semibold text-[#570000]">
+                    <div className="mt-4 rounded-xl bg-secondary px-4 py-3 text-sm">
+                      <p className="font-semibold text-foreground">
                         Opponents locked in:
                       </p>
                       <ul className="mt-2 space-y-1">
@@ -354,7 +357,7 @@ export default function OnlinePlayPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#FFB6B3] bg-white/90 shadow-lg">
+          <Card className="border border-border bg-card/90 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
                 <Trophy className="h-5 w-5" /> Ladder snapshot
@@ -362,7 +365,7 @@ export default function OnlinePlayPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {leaderboard.length === 0 ? (
-                <div className="rounded-xl bg-[#FFEBEB] px-4 py-6 text-sm text-[#570000]/80">
+                <div className="rounded-xl bg-secondary px-4 py-6 text-sm text-foreground/80">
                   <p>Finish your first ranked games to start filling the leaderboard.</p>
                 </div>
               ) : (
@@ -370,13 +373,13 @@ export default function OnlinePlayPage() {
                   {leaderboard.map((entry, index) => (
                     <li
                       key={`${entry.playerId}-${entry.lastMatch}`}
-                      className="flex items-center justify-between rounded-xl border border-[#FFB6B3] bg-white/70 px-4 py-3 text-sm"
+                      className="flex items-center justify-between rounded-xl border border-border bg-card/70 px-4 py-3 text-sm"
                     >
                       <div>
-                        <p className="font-semibold text-[#570000]">
+                        <p className="font-semibold text-foreground">
                           #{index + 1} {entry.name}
                         </p>
-                        <p className="text-xs text-[#570000]/70">
+                        <p className="text-xs text-foreground/70">
                           Last match {formatLastMatch(entry)}
                         </p>
                       </div>
@@ -384,7 +387,7 @@ export default function OnlinePlayPage() {
                         <p className="text-lg font-bold text-[#FF9190]">
                           {Math.round(entry.rating)}
                         </p>
-                        <p className="text-xs text-[#570000]/70">
+                        <p className="text-xs text-foreground/70">
                           {entry.wins}W / {entry.losses}L
                         </p>
                       </div>
@@ -392,7 +395,7 @@ export default function OnlinePlayPage() {
                   ))}
                 </ul>
               )}
-              <p className="text-xs text-[#570000]/60">
+              <p className="text-xs text-foreground/60">
                 Ranked matches contribute to the global ladder. Win streaks provide a bonus to
                 rating gains, while losses reduce your streak.
               </p>

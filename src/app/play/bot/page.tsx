@@ -230,8 +230,8 @@ export default function PlayBot() {
     console.log(gameState?.moveHistory)
   }, [gameState?.moveHistory])
   return (
-    <div className=" bg-[#FFA7A6] flex flex-col overflow-y-auto min-h-fit ">
-      <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
+    <div className="bg-background flex flex-col overflow-y-auto min-h-fit ">
+      <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold">VS</h2> <span> Advance AI</span>
         </div>
@@ -240,7 +240,7 @@ export default function PlayBot() {
           <Button
             variant="outline"
             size="sm"
-            className="border-white hover:text-white text-[#3D0000] bg-white hover:bg-[#570000]"
+            className="border-primary-foreground bg-card text-primary hover:bg-primary hover:text-primary-foreground"
             onClick={startGame}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -269,7 +269,7 @@ export default function PlayBot() {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
           >
-            <div className="bg-[#570000] p-6 relative overflow-hidden">
+            <div className="bg-primary p-6 relative overflow-hidden text-primary-foreground">
               <div className="absolute inset-0 opacity-20">
                 {['●', '▲', '✚', '■', '★'].map((symbol, i) => (
                   <motion.div
@@ -325,50 +325,50 @@ export default function PlayBot() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <h2 className="text-[#570000] text-xl font-bold mb-4">
+                <h2 className="text-primary text-xl font-bold mb-4">
                   How to Play Whot!
                 </h2>
                 <ul className="text-left text-gray-700 space-y-2 text-sm">
                   <li className="flex items-start">
-                    <span className="text-[#570000] mr-2">•</span>
+                    <span className="text-primary mr-2">•</span>
                     <span>
                       Play cards matching the symbol or number of the top card
                     </span>
                   </li>
                   <li className="flex items-start">
-                    <span className="text-[#570000] mr-2">•</span>
+                    <span className="text-primary mr-2">•</span>
                     <span>Special cards have unique effects:</span>
                     <ul className="ml-6 mt-1 space-y-1">
                       <li className="flex items-start text-xs">
-                        <span className="text-[#570000] mr-2">-</span>
+                        <span className="text-primary mr-2">-</span>
                         <span>Whot (20): Change the required symbol</span>
                       </li>
                       <li className="flex items-start text-xs">
-                        <span className="text-[#570000] mr-2">-</span>
+                        <span className="text-primary mr-2">-</span>
                         <span>Card Number 1: Skip next player</span>
                       </li>
                       <li className="flex items-start text-xs">
-                        <span className="text-[#570000] mr-2">-</span>
+                        <span className="text-primary mr-2">-</span>
                         <span>Card Number 2: Next player picks 2 cards</span>
                       </li>
 
                       <li className="flex items-start text-xs">
-                        <span className="text-[#570000] mr-2">-</span>
+                        <span className="text-primary mr-2">-</span>
                         <span>Card Number 14: All players pick a card</span>
                       </li>
                     </ul>
                   </li>
                   <li className="flex items-start">
-                  <span className="text-[#570000] mr-2">•</span>
+                  <span className="text-primary mr-2">•</span>
                   <span>Draw a card if you can&rsquo;t play any</span>
                   </li>
 
                   <li className="flex items-start">
-                    <span className="text-[#570000] mr-2">•</span>
+                    <span className="text-primary mr-2">•</span>
                     <span>First player to use all their cards wins!</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="text-[#570000] mr-2">•</span>
+                    <span className="text-primary mr-2">•</span>
                     <span>
                       When the market is empty, the player with the highest card
                       number loses!
@@ -383,7 +383,7 @@ export default function PlayBot() {
                 transition={{ delay: 0.6, type: 'spring' }}
               >
                 <Button
-                  className="bg-[#570000] hover:bg-[#3D0000] text-white w-full py-6 text-lg rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full py-6 text-lg rounded-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
                   onClick={startGame}
                 >
                   Start New Game

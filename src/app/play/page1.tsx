@@ -24,10 +24,10 @@ export default function PlayPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FFA7A6] flex flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 text-[#570000] animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-[#570000]">Loading Game...</h2>
-        <p className="text-[#570000]/70">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-primary">Loading Game...</h2>
+        <p className="text-muted-foreground">
           Shuffling cards and preparing the table
         </p>
       </div>

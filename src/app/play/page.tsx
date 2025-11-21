@@ -164,16 +164,22 @@ export default function GamePage() {
   }, [])
 
   return (
-    <div className="p-2 bg-gradient-to-b min-h-full from-[#FFA7A6] overflow-y-auto to-[#FF8585]">
+    <div className="p-2 bg-gradient-to-b min-h-full from-background overflow-y-auto to-[#FF8585]">
       <div className="flex flex-col lg:flex-row gap-4 h-full w-full">
         <div className="lg:w-2/3 min-h-full w-full overflow-hidden hidden md:block lg:block ">
-          <GameSkeleton
-            gameState={gameState}
-            isBotThinking={isBotThinking}
-            drawCard={drawCard}
-            playCard={playCard}
-            closeInsightCallback={closeInsightCallback}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          >
+            <GameSkeleton
+              gameState={gameState}
+              isBotThinking={isBotThinking}
+              drawCard={drawCard}
+              playCard={playCard}
+              closeInsightCallback={closeInsightCallback}
+            />
+          </motion.div>
         </div>
 
         <div className="w-full lg:w-1/3 h-full ">

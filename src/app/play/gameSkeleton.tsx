@@ -44,51 +44,82 @@ export default function GameSkeleton({
   const [isSmallScreen, setIsSmallScreen] = useState(false)
   const [whotInsightShow, setWhotInsightShow] = useState(true)
   const playerHandRef = useRef<HTMLDivElement>(null)
+  const [handWidth, setHandWidth] = useState(0)
 
   // Set default botHandCount if not provided
   const botCount = gameState.botHandCount || gameState.botHand.length || 5
 
   useEffect(() => {
-    const checkScreenSize = () => {
+    const element = playerHandRef.current
+    if (!element) {
+      setIsSmallScreen(typeof window !== 'undefined' && window.innerWidth < 768)
+      return
+    }
+
+    const updateSizes = () => {
+      if (!playerHandRef.current) return
+      setHandWidth(playerHandRef.current.offsetWidth)
       setIsSmallScreen(window.innerWidth < 768)
     }
-    checkScreenSize()
-    window.addEventListener('resize', checkScreenSize)
+
+    updateSizes()
+    window.addEventListener('resize', updateSizes)
+
+    const resizeObserver = new ResizeObserver(updateSizes)
+    resizeObserver.observe(element)
+
     return () => {
-      window.removeEventListener('resize', checkScreenSize)
+      window.removeEventListener('resize', updateSizes)
+      resizeObserver.unobserve(element)
     }
   }, [])
 
   const getPlayerCardStyle = (index: number, totalCards: number) => {
-    const center = totalCards / 2
-    const normalizedPos = (index - center) / center
-
-    const maxRotation = Math.min(25, 35 * (10 / Math.max(totalCards, 10)))
-    const rotation = normalizedPos * maxRotation
-
     const cardWidth = 70
-    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
-    const isMobile = screenWidth < 768
+    const overlapFactor = Math.min(1, 10 / totalCards)
+    const mobileAdjust = handWidth < 400 ? 0.5 : handWidth < 600 ? 0.7 : 1
 
-    const widthFactor = isMobile
-      ? Math.min(0.6, 5 / Math.max(totalCards, 5))
-      : Math.min(1, 12 / Math.max(totalCards, 12))
+    const cardVisibleWidth = isSmallScreen
+      ? cardWidth * 0.6
+      : handExpanded
+        ? cardWidth * (0.5 + overlapFactor * 0.3)
+        : cardWidth * (0.25 + overlapFactor * 0.15)
 
-    const maxWidth = isMobile ? screenWidth * 0.7 : 400
-    const arcWidth = Math.min(maxWidth, totalCards * 20 * widthFactor)
+    const maxFanWidth = Math.min(
+      handWidth - cardWidth,
+      totalCards * cardVisibleWidth * mobileAdjust
+    )
 
-    const spacingFactor = Math.min(0.8, 8 / Math.max(totalCards, 8))
-    const xPos =
-      index * (arcWidth / totalCards) * spacingFactor -
-      (arcWidth / 2) * spacingFactor +
-      cardWidth / 2
+    const baseMaxAngle = isSmallScreen ? 0 : 25
+    const cardCountFactor = Math.min(1, 7 / totalCards)
+    const maxAngle =
+      handWidth < 500 ? baseMaxAngle + 5 : baseMaxAngle * cardCountFactor
 
-    const yOffset = Math.abs(normalizedPos) * 10 * spacingFactor
+    const center = totalCards / 2
+    const position = index - center
+    const normalizedPosition = position / center
+    const rotation = normalizedPosition * maxAngle
+    const fanFactor = maxFanWidth / Math.max(totalCards - 1, 1)
+
+    let arcX
+    if (isSmallScreen) {
+      const cardSpacing = cardVisibleWidth * 1.2
+      arcX =
+        index * cardSpacing - (totalCards * cardSpacing) / 2 + handWidth / 2
+    } else {
+      arcX = index * fanFactor - (fanFactor * (totalCards - 1)) / 2
+    }
+
+    const arcHeight = isSmallScreen ? 10 : Math.min(25, 30 * cardCountFactor)
+    const arcY = Math.abs(normalizedPosition) * arcHeight
+    const zIndex =
+      50 + (position < 0 ? totalCards + index : totalCards - index)
 
     return {
       rotation,
-      x: xPos,
-      y: yOffset,
+      x: arcX,
+      y: arcY,
+      zIndex,
       scale: 1,
     }
   }
@@ -322,7 +353,7 @@ export default function GameSkeleton({
                 zIndex: 1,
               }}
             >
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {gameState.playerHand.map((card, index) => {
                   const style = getPlayerCardStyle(
                     index,

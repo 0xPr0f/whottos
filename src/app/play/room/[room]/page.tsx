@@ -471,15 +471,15 @@ export default function GameRoom() {
   }
 
   return (
-    <div className="h-full bg-[#FFA7A6] flex flex-col overflow-y-auto">
+    <div className="h-full bg-background flex flex-col overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, type: 'spring', stiffness: 100 }}
-        className="bg-[#570000] w-full p-4 flex justify-between items-center"
+        className="bg-primary w-full p-4 flex justify-between items-center text-primary-foreground"
       >
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-white">Room {roomId}</h2>
+          <h2 className="text-lg font-bold">Room {roomId}</h2>
         </div>
         <div className="flex items-center">
           {/*} <Button
@@ -515,7 +515,7 @@ export default function GameRoom() {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
           >
-            <div className="bg-[#570000] p-6 relative overflow-hidden">
+            <div className="bg-primary p-6 relative overflow-hidden text-primary-foreground">
               <div className="absolute inset-0 opacity-20">
                 {['●', '▲', '✚', '■', '★'].map((symbol, i) => (
                   <motion.div

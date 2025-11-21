@@ -462,39 +462,39 @@ export default function GameBoard() {
   // Render game board based on state
   if (gameState === 'waiting') {
     return (
-      <div className="min-h-screen bg-[#FFA7A6] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <motion.div
           className="bg-white rounded-xl p-8 shadow-2xl max-w-2xl w-full"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold text-[#570000] text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-8">
             Play Whot Card Game
           </h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             <Button
               size="lg"
-              className="bg-white hover:bg-[#570000] text-[#570000] hover:text-white font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group border-2 border-[#570000]"
+              className="bg-card text-primary border-2 border-primary hover:bg-primary hover:text-primary-foreground font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group"
               onClick={() => initializeGame('onchain')}
             >
-              <Coins className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12 text-[#570000] group-hover:text-white" />
+              <Coins className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12 text-primary group-hover:text-primary-foreground" />
               <span>Play Onchain</span>
             </Button>
 
             <Button
               size="lg"
-              className="bg-white hover:bg-[#570000] text-[#570000] hover:text-white font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group border-2 border-[#570000]"
+              className="bg-card text-primary border-2 border-primary hover:bg-primary hover:text-primary-foreground font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group"
               onClick={() => initializeGame('offchain')}
             >
-              <Zap className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12 text-[#570000] group-hover:text-white" />
+              <Zap className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12 text-primary group-hover:text-primary-foreground" />
               <span>Play Offchain</span>
             </Button>
 
             <Button
               size="lg"
-              className="bg-[#FFA7A6] hover:bg-[#570000] text-[#570000] hover:text-white font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group md:col-span-2 border-2 border-[#570000]"
+              className="bg-accent hover:bg-primary text-accent-foreground hover:text-primary-foreground font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group md:col-span-2 border-2 border-primary"
               onClick={() => initializeGame('friends')}
             >
               <Users className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-12 text-[#570000] group-hover:text-white" />
@@ -502,7 +502,7 @@ export default function GameBoard() {
             </Button>
           </div>
 
-          <div className="text-center text-[#570000]/70">
+          <div className="text-center text-primary/70">
             <p>Choose a game mode to start playing!</p>
           </div>
         </motion.div>
@@ -512,19 +512,19 @@ export default function GameBoard() {
 
   if (gameState === 'finished') {
     return (
-      <div className="min-h-screen bg-[#FFA7A6] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <motion.div
           className="bg-white rounded-xl p-8 shadow-2xl max-w-2xl w-full"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold text-[#570000] text-center mb-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-4">
             Game Over!
           </h1>
 
           <div className="text-center mb-8">
-            <p className="text-xl text-[#570000]">
+            <p className="text-xl text-primary">
               {winner?.name === 'You'
                 ? 'Congratulations! You won!'
                 : `${winner?.name} won the game!`}
@@ -533,7 +533,7 @@ export default function GameBoard() {
 
           <Button
             size="lg"
-            className="w-full bg-[#570000] hover:text-white text-[#3D0000] hover:bg-[#3D0000] font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg py-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
             onClick={resetGame}
           >
             <RefreshCw className="mr-2 h-5 w-5" />
@@ -545,9 +545,9 @@ export default function GameBoard() {
   }
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-[#FFA7A6] flex flex-col">
+    <div className="min-h-screen overflow-y-auto bg-background flex flex-col">
       {/* Game info */}
-      <div className="bg-[#570000] text-white p-4 flex justify-between items-center">
+      <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
         <div>
           <h2 className="text-lg font-bold">Whot Game</h2>
           <p className="text-sm opacity-80">
@@ -566,7 +566,7 @@ export default function GameBoard() {
           <Button
             variant="outline"
             size="sm"
-            className="border-white hover:text-white text-[#3D0000] bg-white hover:bg-[#570000]"
+            className="border-primary-foreground bg-card text-primary hover:bg-primary hover:text-primary-foreground"
             onClick={resetGame}
           >
             <RefreshCw className="h-4 w-4 mr-2" />

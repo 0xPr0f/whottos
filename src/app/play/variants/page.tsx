@@ -24,9 +24,9 @@ const variants = [
 
 export default function GameVariantsPage() {
   return (
-    <div className="min-h-screen bg-[#FFE2E1] px-4 py-10 text-[#570000]">
+    <div className="min-h-full bg-background px-4 py-10 text-foreground">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <header className="flex flex-col gap-4 rounded-3xl bg-[#570000] px-6 py-10 text-white shadow-xl">
+        <header className="flex flex-col gap-4 rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-xl">
           <Link
             href="/play"
             className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white"
@@ -35,24 +35,29 @@ export default function GameVariantsPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-black md:text-4xl">Upcoming variants</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80 md:text-base">
+            <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 md:text-base">
               New experimental modes are in development. We&apos;re polishing the rulesets below
               before opening public playtests.
             </p>
           </div>
         </header>
 
-        <Card className="border-[#FFB6B3] bg-white/90 shadow-lg">
+        <Card className="border border-border bg-card/90 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <Puzzle className="h-5 w-5" /> Design lab
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-relaxed text-[#570000]/80">
+          <CardContent className="space-y-4 text-sm leading-relaxed text-foreground/80">
             {variants.map((variant) => (
-              <div key={variant.title} className="rounded-2xl border border-[#FFB6B3]/70 bg-white/70 px-4 py-3">
-                <h2 className="text-lg font-semibold text-[#570000]">{variant.title}</h2>
-                <p className="mt-1 text-[#570000]/80">{variant.description}</p>
+              <div
+                key={variant.title}
+                className="rounded-2xl border border-border/70 bg-card/80 px-4 py-3"
+              >
+                <h2 className="text-lg font-semibold text-foreground">
+                  {variant.title}
+                </h2>
+                <p className="mt-1 text-foreground/80">{variant.description}</p>
               </div>
             ))}
             <p>
@@ -62,8 +67,8 @@ export default function GameVariantsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-dashed border-[#FFB6B3] bg-[#FFF5F5]/80">
-          <CardContent className="flex items-center gap-4 text-sm text-[#570000]/70">
+        <Card className="border-dashed border-border bg-secondary/80">
+          <CardContent className="flex items-center gap-4 text-sm text-foreground/70">
             <Layers className="h-5 w-5" />
             <p>
               Ranked queue updates ship first. Variants will rotate into limited-time events

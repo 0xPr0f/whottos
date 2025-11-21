@@ -248,26 +248,30 @@ export function MemoryMatchGame() {
   const matchedPairs = useMemo(() => deck.filter((card) => card.matched).length / 2, [deck])
 
   return (
-    <Card className="bg-[#120000]/60 border-[#3D0000] text-white">
-      <CardHeader>
+    <Card className="bg-card text-foreground border-border">
+      <CardHeader className="pb-4 md:pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-2xl font-semibold">Memory Match</CardTitle>
-            <CardDescription className="text-zinc-300">
+            <CardTitle className="text-xl md:text-2xl font-semibold">
+              Memory Match
+            </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
               Flip cards to find every matching pair. {modeLabels[mode]}.
             </CardDescription>
           </div>
           <Button
             variant="outline"
-            className="border-[#3D0000] bg-[#3D0000]/30 text-white hover:bg-[#570000]"
+            className="border-border bg-secondary hover:bg-secondary/80"
             onClick={() => resetGame(mode)}
           >
             Reset board
           </Button>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border border-[#3D0000] bg-[#1F0000]/70 p-4">
-            <p className="text-sm text-zinc-300">Mode</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-border bg-secondary p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Mode
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {(['solo', 'friend', 'bot'] satisfies MemoryMode[]).map((entry) => (
                 <Button
@@ -275,8 +279,10 @@ export function MemoryMatchGame() {
                   size="sm"
                   variant={mode === entry ? 'default' : 'outline'}
                   className={cn(
-                    'border-[#3D0000] text-white hover:bg-[#570000]',
-                    mode === entry ? 'bg-[#570000]' : 'bg-[#1F0000]'
+                    'min-w-[96px] justify-center',
+                    mode === entry
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-foreground border-border hover:bg-secondary'
                   )}
                   onClick={() => resetGame(entry)}
                 >
@@ -285,30 +291,40 @@ export function MemoryMatchGame() {
               ))}
             </div>
           </div>
-          <div className="rounded-lg border border-[#3D0000] bg-[#1F0000]/70 p-4">
-            <p className="text-sm text-zinc-300">Progress</p>
-            <p className="mt-2 text-lg font-semibold">
+          <div className="rounded-lg border border-border bg-secondary p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Progress
+            </p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
               {matchedPairs} / {totalPairs} pairs found
             </p>
-            <p className="text-sm text-zinc-400">Attempts: {attempts}</p>
+            <p className="text-sm text-muted-foreground">Attempts: {attempts}</p>
           </div>
-          <div className="rounded-lg border border-[#3D0000] bg-[#1F0000]/70 p-4">
-            <p className="text-sm text-zinc-300">
+          <div className="rounded-lg border border-border bg-secondary p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {mode === 'solo' ? 'Personal best tracker' : 'Scoreboard'}
             </p>
             {mode === 'solo' ? (
-              <p className="mt-2 text-sm text-zinc-200">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Clear the board in as few attempts as possible. Perfect memory uses exactly {totalPairs} attempts.
               </p>
             ) : (
               <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded border border-[#3D0000] bg-[#3D0000]/30 p-2">
-                  <dt className="text-zinc-300">You</dt>
-                  <dd className="text-lg font-semibold">{scores.player}</dd>
+                <div className="rounded border border-border bg-card/80 p-2">
+                  <dt className="text-xs text-muted-foreground uppercase">
+                    You
+                  </dt>
+                  <dd className="text-lg font-semibold text-foreground">
+                    {scores.player}
+                  </dd>
                 </div>
-                <div className="rounded border border-[#3D0000] bg-[#3D0000]/30 p-2">
-                  <dt className="text-zinc-300">{mode === 'friend' ? 'Friend' : 'Bot'}</dt>
-                  <dd className="text-lg font-semibold">{scores.opponent}</dd>
+                <div className="rounded border border-border bg-card/80 p-2">
+                  <dt className="text-xs text-muted-foreground uppercase">
+                    {mode === 'friend' ? 'Friend' : 'Bot'}
+                  </dt>
+                  <dd className="text-lg font-semibold text-foreground">
+                    {scores.opponent}
+                  </dd>
                 </div>
               </dl>
             )}
@@ -316,15 +332,15 @@ export function MemoryMatchGame() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-zinc-300">
+        <div className="mb-4 md:mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm text-muted-foreground">
             {message ||
               (mode === 'solo'
                 ? 'Flip two cards to begin. Memorize each symbol and chase a perfect streak.'
                 : `${turnLabel[currentTurn]}'s turn.`)}
           </p>
           {mode === 'friend' && (
-            <div className="flex items-center gap-2 text-sm text-zinc-300">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Switch
                 id="friend-turn"
                 checked={currentTurn === 'player'}
@@ -336,7 +352,7 @@ export function MemoryMatchGame() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-2.5 md:gap-3">
           {deck.map((card) => {
             const isActive = card.flipped || card.matched
             return (
@@ -346,16 +362,16 @@ export function MemoryMatchGame() {
                 disabled={isActive || isResolving || (mode === 'bot' && currentTurn === 'opponent')}
                 onClick={() => revealCard(card.id, 'player')}
                 className={cn(
-                  'aspect-square rounded-xl border-2 text-lg font-semibold transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-[#F28D35] focus:ring-offset-2 focus:ring-offset-[#120000]',
+                  'aspect-square rounded-xl border-2 text-lg font-semibold transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background',
                   card.matched
-                    ? 'border-[#F28D35] bg-[#F28D35]/20 text-[#F28D35]'
+                    ? 'border-accent bg-accent/20 text-accent'
                     : card.flipped
-                    ? 'border-white bg-[#3D0000] text-white scale-105'
-                    : 'border-[#3D0000] bg-[#1F0000]/80 text-transparent hover:bg-[#3D0000]/60'
+                    ? 'border-primary-foreground bg-primary text-primary-foreground scale-105'
+                    : 'border-border bg-secondary text-transparent hover:bg-primary/10'
                 )}
               >
                 <span className="block text-3xl">{card.flipped || card.matched ? card.symbol : '？'}</span>
-                <span className="mt-1 block text-xs text-zinc-300">
+                <span className="mt-1 block text-xs text-muted-foreground">
                   {(card.flipped || card.matched) && card.label}
                 </span>
               </button>

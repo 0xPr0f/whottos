@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 
 export default function OnchainTournamentsPage() {
   return (
-    <div className="min-h-screen bg-[#FFE2E1] px-4 py-10 text-[#570000]">
+    <div className="min-h-full bg-background px-4 py-10 text-foreground">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <header className="flex flex-col gap-4 rounded-3xl bg-[#570000] px-6 py-10 text-white shadow-xl">
+        <header className="flex flex-col gap-4 rounded-3xl bg-primary px-6 py-10 text-primary-foreground shadow-xl">
           <Link
             href="/play"
             className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white"
@@ -18,20 +18,20 @@ export default function OnchainTournamentsPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-black md:text-4xl">On-chain tournaments</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80 md:text-base">
+            <p className="mt-2 max-w-2xl text-sm text-primary-foreground/80 md:text-base">
               Blockchain-enabled competitive circuits are coming soon. We&apos;re wiring the
               ranked ladder into automated brackets with verifiable rewards.
             </p>
           </div>
         </header>
 
-        <Card className="border-[#FFB6B3] bg-white/90 shadow-lg">
+        <Card className="border border-border bg-card/90 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <Trophy className="h-5 w-5" /> Tournament roadmap
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-relaxed text-[#570000]/80">
+          <CardContent className="space-y-4 text-sm leading-relaxed text-foreground/80">
             <p>
               We&apos;re integrating wallet sign-in, prize pools, and audited match verification.
               Once live, you&apos;ll be able to queue for seasonal events directly from the ranked
@@ -39,19 +39,19 @@ export default function OnchainTournamentsPage() {
             </p>
             <p>
               Until then, sharpen your skills in the{' '}
-              <Link href="/play/online" className="font-semibold text-[#570000] underline">
+              <Link href="/play/online" className="font-semibold text-primary underline">
                 online ladder
               </Link>{' '}
               — tournament invites will prioritize top performers.
             </p>
-            <Button asChild className="bg-[#570000] text-white hover:bg-[#570000]/90">
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Link href="/leaderboard">Track the current leaders</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-dashed border-[#FFB6B3] bg-[#FFF5F5]/80">
-          <CardContent className="flex items-center gap-4 text-sm text-[#570000]/70">
+        <Card className="border-dashed border-border bg-secondary/80">
+          <CardContent className="flex items-center gap-4 text-sm text-foreground/70">
             <Globe2 className="h-5 w-5" />
             <p>
               Global qualifiers will open after stress-testing the matchmaking infrastructure.
